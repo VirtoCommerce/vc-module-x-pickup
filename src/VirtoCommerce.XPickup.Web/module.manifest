@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<module>
+  <id>VirtoCommerce.XPickup</id>
+  <version>3.800.0</version>
+  <version-tag></version-tag>
+
+  <platformVersion>3.876.0</platformVersion>
+  <dependencies>
+    <dependency id="VirtoCommerce.Xapi" version="3.904.0" />
+  </dependencies>
+
+  <title>VirtoCommerce XPickup</title>
+  <description>VirtoCommerce XPickup</description>
+
+  <authors>
+    <author>Kirill Iusupov</author>
+  </authors>
+  <owners>
+    <owner>VirtoCommerce</owner>
+  </owners>
+
+  <projectUrl>https://github.com/VirtoCommerce/vc-module-x-pickup</projectUrl>
+  <iconUrl>Modules/$(VirtoCommerce.XPickup)/Content/logo.png</iconUrl>
+  <requireLicenseAcceptance>false</requireLicenseAcceptance>
+
+  <assemblyFile>VirtoCommerce.XPickup.Web.dll</assemblyFile>
+  <moduleType>VirtoCommerce.XPickup.Web.Module, VirtoCommerce.XPickup.Web</moduleType>
+
+  <releaseNotes>First version.</releaseNotes>
+  <copyright>Copyright © 2025 VirtoCommerce. All rights reserved</copyright>
+  <tags>extension module</tags>
+  <useFullTypeNameInSwagger>false</useFullTypeNameInSwagger>
+</module>

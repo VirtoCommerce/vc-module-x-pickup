@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "x-pickup:create": "Create XPickup related data",
+    "x-pickup:read": "View XPickup related data",
+    "x-pickup:update": "Update XPickup related data",
+    "x-pickup:delete": "Delete XPickup related data"
+  }
+}
