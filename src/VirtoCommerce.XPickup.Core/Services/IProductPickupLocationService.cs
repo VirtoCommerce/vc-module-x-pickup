@@ -5,6 +5,6 @@ namespace VirtoCommerce.XPickup.Core.Services;
 
 public interface IProductPickupLocationService
 {
-    Task<ProductPickupLocationSearchResult> SearchPickupLocations(SingleProductPickupLocationSearchCriteria searchCriteria);
-    Task<ProductPickupLocationSearchResult> SearchPickupLocations(MultipleProductsPickupLocationSearchCriteria searchCriteria);
+    Task<ProductPickupLocationSearchResult> SearchPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria);
+    Task<ProductPickupLocationSearchResult> SearchPickupLocationsAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria);
 }
