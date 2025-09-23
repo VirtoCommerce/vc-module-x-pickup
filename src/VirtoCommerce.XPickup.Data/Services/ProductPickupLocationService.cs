@@ -253,6 +253,7 @@ public class ProductPickupLocationService(
 
         var productInventorySearchCriteria = AbstractTypeFactory<ProductInventorySearchCriteria>.TryCreateInstance();
         productInventorySearchCriteria.ProductIds = productIds;
+        productInventorySearchCriteria.WithInventoryOnly = true;
 
         return await productInventorySearchService.Value.SearchAllProductInventoriesNoCloneAsync(productInventorySearchCriteria);
     }
