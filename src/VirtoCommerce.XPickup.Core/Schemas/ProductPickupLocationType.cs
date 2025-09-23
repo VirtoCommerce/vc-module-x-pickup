@@ -19,7 +19,7 @@ public class ProductPickupLocationType : ExtendableGraphType<ProductPickupLocati
         Field(x => x.PickupLocation.DeliveryDays, nullable: true).Description("Days until ready for pickup");
         Field(x => x.PickupLocation.StorageDays, nullable: true).Description("How long an order will be stored at a pickup point");
         Field(x => x.PickupLocation.GeoLocation, nullable: true).Description("GeoLocation");
-        ExtendableField<PickupAddressType>("address", "Address", resolve: context => context.Source.PickupLocation.Address);
+        ExtendableField<PickupLocationAddressType>("address", "Address", resolve: context => context.Source.PickupLocation.Address);
 
         Field<ProductPickupAvailabilityType>("AvailabilityType").Resolve(context => context.Source.AvailabilityType);
         Field(x => x.AvailabilityNote, nullable: true);

@@ -4,9 +4,9 @@ using VirtoCommerce.Xapi.Core.Schemas;
 
 namespace VirtoCommerce.XPickup.Core.Schemas;
 
-public class PickupAddressType : ExtendableGraphType<PickupLocationAddress>
+public class PickupLocationAddressType : ExtendableGraphType<PickupLocationAddress>
 {
-    public PickupAddressType()
+    public PickupLocationAddressType()
     {
         Field(x => x.Id).Description("Id");
         Field(x => x.Key, true).Description("Key");
