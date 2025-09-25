@@ -341,7 +341,7 @@ public class ProductPickupLocationService(
         if (sort.IsNullOrEmpty())
         {
             return items
-                .OrderByDescending(x => GetAvaiabilityScore(x.AvailabilityType))
+                .OrderByDescending(x => GetAvailabilityScore(x.AvailabilityType))
                 .ThenByDescending(x => x.AvailableQuantity)
                 .ThenBy(x => x.PickupLocation.Name);
         }
@@ -349,7 +349,7 @@ public class ProductPickupLocationService(
         return items;
     }
 
-    protected virtual int GetAvaiabilityScore(string availabilityType)
+    protected virtual int GetAvailabilityScore(string availabilityType)
     {
         return availabilityType switch
         {
@@ -362,8 +362,8 @@ public class ProductPickupLocationService(
 
     protected virtual string GetWorstAvailability(string productAvailability1, string productAvailability2)
     {
-        var score1 = GetAvaiabilityScore(productAvailability1);
-        var score2 = GetAvaiabilityScore(productAvailability2);
+        var score1 = GetAvailabilityScore(productAvailability1);
+        var score2 = GetAvailabilityScore(productAvailability2);
 
         return score1 < score2 ? productAvailability1 : productAvailability2;
     }
