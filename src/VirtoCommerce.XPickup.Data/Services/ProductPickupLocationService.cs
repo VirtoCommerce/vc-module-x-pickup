@@ -115,7 +115,7 @@ public class ProductPickupLocationService(
 
         var resultItems = new List<ProductPickupLocation>();
 
-        var worstAvailability = globalTransferEnabled ? ProductPickupAvailability.GlobalTransfer : ProductPickupAvailability.Transfer;
+        var worstAvailability = globalTransferEnabled ? ProductPickupAvailability.GlobalTransfer : null;
 
         foreach (var pickupLocation in pickupLocations)
         {
