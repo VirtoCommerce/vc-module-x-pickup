@@ -1,6 +1,10 @@
 {
   "settings": {
     "XPickup": {
+      "Enabled": {
+        "title": "Ativar módulo X-Pickup",
+        "description": "Ativar módulo X-Pickup (BOPIS)"
+      },
       "TodayAvailabilityNote": {
         "title": "Texto de disponibilidade de produto hoje",
         "description": "Texto de disponibilidade de produto hoje (ex.: 'hoje'). Por favor, insira apenas um valor por idioma."

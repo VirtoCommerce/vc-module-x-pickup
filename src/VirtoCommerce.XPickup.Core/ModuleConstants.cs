@@ -7,6 +7,14 @@ public static class ModuleConstants
 {
     public static class Settings
     {
+        public static SettingDescriptor Enabled { get; } = new SettingDescriptor
+        {
+            Name = "XPickup.Enabled",
+            GroupName = "Bopis",
+            ValueType = SettingValueType.Boolean,
+            IsPublic = true
+        };
+
         public static SettingDescriptor TodayAvailabilityNote { get; } = new()
         {
             Name = "XPickup.TodayAvailabilityNote",
@@ -50,6 +58,7 @@ public static class ModuleConstants
         {
             get
             {
+                yield return Enabled;
                 yield return TodayAvailabilityNote;
                 yield return TransferAvailabilityNote;
                 yield return GlobalTransferAvailabilityNote;

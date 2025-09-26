@@ -1,6 +1,10 @@
 {
   "settings": {
     "XPickup": {
+      "Enabled": {
+        "title": "X-Pickupモジュールを有効にする",
+        "description": "X-Pickup (BOPIS) モジュールを有効にする"
+      },
       "TodayAvailabilityNote": {
         "title": "今日の製品の在庫テキスト",
         "description": "今日の製品の在庫テキスト（例：'今日'）。各言語につき1つの値のみ入力してください。"
