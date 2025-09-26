@@ -3,11 +3,12 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using VirtoCommerce.Platform.Core.Modularity;
-using VirtoCommerce.Platform.Core.Security;
+using VirtoCommerce.Platform.Core.Settings;
+using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Extensions;
-using VirtoCommerce.Xapi.Core.Infrastructure;
 using VirtoCommerce.XPickup.Core;
 using VirtoCommerce.XPickup.Data;
+using VirtoCommerce.XPickup.Data.Extensions;
 
 namespace VirtoCommerce.XPickup.Web;
 
@@ -18,32 +19,21 @@ public class Module : IModule, IHasConfiguration
 
     public void Initialize(IServiceCollection serviceCollection)
     {
-        // Override models
-        //AbstractTypeFactory<OriginalModel>.OverrideType<OriginalModel, ExtendedModel>().MapToType<ExtendedEntity>();
-        //AbstractTypeFactory<OriginalEntity>.OverrideType<OriginalEntity, ExtendedEntity>();
-
-        // Register services
-        //serviceCollection.AddTransient<IMyService, MyService>();
-
-        // Register GraphQL schema
-        _ = new GraphQLBuilder(serviceCollection, builder =>
+        var graphQlBuilder = new GraphQLBuilder(serviceCollection, builder =>
         {
-            builder.AddSchema(serviceCollection, typeof(AssemblyMarker));
+            builder.AddSchema(serviceCollection, typeof(CoreAssemblyMarker), typeof(DataAssemblyMarker));
         });
-
-        serviceCollection.AddSingleton<ScopedSchemaFactory<AssemblyMarker>>();
+        serviceCollection.AddXPickup(graphQlBuilder);
     }
 
     public void PostInitialize(IApplicationBuilder appBuilder)
     {
-        var serviceProvider = appBuilder.ApplicationServices;
-
-        // Register permissions
-        var permissionsRegistrar = serviceProvider.GetRequiredService<IPermissionsRegistrar>();
-        permissionsRegistrar.RegisterPermissions(ModuleInfo.Id, "XPickup", ModuleConstants.Security.Permissions.AllPermissions);
-
         // Register partial GraphQL schema
-        appBuilder.UseScopedSchema<AssemblyMarker>("x-pickup");
+        appBuilder.UseScopedSchema<DataAssemblyMarker>("pickup");
+
+        var settingsRegistrar = appBuilder.ApplicationServices.GetRequiredService<ISettingsRegistrar>();
+        settingsRegistrar.RegisterSettings(ModuleConstants.Settings.PickupLocationSettings, ModuleInfo.Id);
+        settingsRegistrar.RegisterSettingsForType(ModuleConstants.Settings.PickupLocationSettings, nameof(Store));
     }
 
     public void Uninstall()
