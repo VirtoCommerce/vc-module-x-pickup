@@ -105,6 +105,11 @@ public class ProductPickupLocationService(
             return result;
         }
 
+        if (searchCriteria.Products.Count == 0)
+        {
+            return result;
+        }
+
         var globalTransferEnabled = GlobalTransferEnabled(store);
 
         var productIds = searchCriteria.Products.Keys.ToList();
