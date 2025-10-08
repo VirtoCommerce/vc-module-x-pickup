@@ -10,7 +10,7 @@ public static class ModuleConstants
         public static SettingDescriptor Enabled { get; } = new SettingDescriptor
         {
             Name = "XPickup.Enabled",
-            GroupName = "Bopis",
+            GroupName = "BOPIS",
             ValueType = SettingValueType.Boolean,
             IsPublic = true
         };
@@ -18,7 +18,7 @@ public static class ModuleConstants
         public static SettingDescriptor TodayAvailabilityNote { get; } = new()
         {
             Name = "XPickup.TodayAvailabilityNote",
-            GroupName = "Bopis",
+            GroupName = "BOPIS",
             ValueType = SettingValueType.ShortText,
             IsLocalizable = true,
             IsDictionary = true,
@@ -28,7 +28,7 @@ public static class ModuleConstants
         public static SettingDescriptor TransferAvailabilityNote { get; } = new()
         {
             Name = "XPickup.TransferAvailabilityNote",
-            GroupName = "Bopis",
+            GroupName = "BOPIS",
             ValueType = SettingValueType.ShortText,
             IsLocalizable = true,
             IsDictionary = true,
@@ -38,7 +38,7 @@ public static class ModuleConstants
         public static SettingDescriptor GlobalTransferAvailabilityNote { get; } = new()
         {
             Name = "XPickup.GlobalTransferAvailabilityNote",
-            GroupName = "Bopis",
+            GroupName = "BOPIS",
             ValueType = SettingValueType.ShortText,
             IsLocalizable = true,
             IsDictionary = true,
@@ -48,7 +48,7 @@ public static class ModuleConstants
         public static SettingDescriptor GlobalTransferEnabled { get; } = new()
         {
             Name = "XPickup.GlobalTransferEnabled",
-            GroupName = "Bopis",
+            GroupName = "BOPIS",
             ValueType = SettingValueType.Boolean,
             DefaultValue = false,
             IsPublic = true,
