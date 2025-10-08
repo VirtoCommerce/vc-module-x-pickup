@@ -2,7 +2,7 @@
   "settings": {
     "XPickup": {
       "Enabled": {
-        "title": "启用 X-Pickup 模块",
+        "title": "启用BOPIS",
         "description": "启用 X-Pickup (BOPIS) 模块"
       },
       "TodayAvailabilityNote": {

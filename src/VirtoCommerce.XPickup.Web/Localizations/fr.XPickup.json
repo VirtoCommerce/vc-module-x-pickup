@@ -2,7 +2,7 @@
   "settings": {
     "XPickup": {
       "Enabled": {
-        "title": "Activer le module X-Pickup",
+        "title": "Activer BOPIS",
         "description": "Activer le module X-Pickup (BOPIS)"
       },
       "TodayAvailabilityNote": {
