@@ -3,7 +3,7 @@
     "XPickup": {
       "Enabled": {
         "title": "BOPISを有効にする",
-        "description": "X-Pickup (BOPIS) モジュールを有効にする"
+        "description": "BOPIS (X-Pickup) モジュールを有効にする"
       },
       "TodayAvailabilityNote": {
         "title": "今日の製品の在庫テキスト",

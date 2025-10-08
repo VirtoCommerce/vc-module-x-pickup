@@ -3,7 +3,7 @@
     "XPickup": {
       "Enabled": {
         "title": "Включить BOPIS",
-        "description": "Включить модуль X-Pickup (BOPIS)"
+        "description": "Включить модуль BOPIS (X-Pickup)"
       },
       "TodayAvailabilityNote": {
         "title": "Текст доступности продукта сегодня",
