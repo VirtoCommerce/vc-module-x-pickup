@@ -4,13 +4,17 @@
   <version>3.800.0</version>
   <version-tag></version-tag>
 
-  <platformVersion>3.876.0</platformVersion>
+  <platformVersion>3.895.0</platformVersion>
   <dependencies>
-    <dependency id="VirtoCommerce.Xapi" version="3.904.0" />
+    <dependency id="VirtoCommerce.Xapi" version="3.924.0" />
+    <dependency id="VirtoCommerce.Catalog" version="3.891.0" />
+    <dependency id="VirtoCommerce.Inventory" version="3.812.0" />
+    <dependency id="VirtoCommerce.Shipping" version="3.812.0" />
+    <dependency id="VirtoCommerce.Cart" version="3.835.0" />
   </dependencies>
 
-  <title>VirtoCommerce XPickup</title>
-  <description>VirtoCommerce XPickup</description>
+  <title>Buy online pickup in store (BOPIS) Experience API</title>
+  <description>Handles buy online pickup in store (BOPIS) operations</description>
 
   <authors>
     <author>Kirill Iusupov</author>
