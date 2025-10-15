@@ -66,7 +66,7 @@ public class ProductPickupLocationService(
 
         var globalTransferEnabled = GlobalTransferEnabled(store);
 
-        var pickupLocations = await SearchProductPickupLocationsAsync(searchCriteria.StoreId, searchCriteria.Keyword);
+        var pickupLocations = await SearchProductPickupLocationsAsync(searchCriteria);
 
         var productInventories = await SearchProductInventoriesAsync([searchCriteria.Product.ProductId]);
 
@@ -122,7 +122,7 @@ public class ProductPickupLocationService(
 
         var products = await itemService.GetByIdsAsync(productIds, responseGroup: null, catalogId: null);
 
-        var pickupLocations = await SearchProductPickupLocationsIndexedAsync(searchCriteria.StoreId, searchCriteria.Facet, searchCriteria.Filter);
+        var pickupLocations = await SearchProductPickupLocationsIndexedAsync(searchCriteria);
 
         var productInventories = await SearchProductInventoriesAsync(productIds);
 
@@ -251,7 +251,7 @@ public class ProductPickupLocationService(
         return (await shippingMethodsSearchService.Value.SearchNoCloneAsync(shippingMethodsSearchCriteria)).TotalCount > 0;
     }
 
-    protected virtual async Task<IList<PickupLocation>> SearchProductPickupLocationsAsync(string storeId, string keyword)
+    protected virtual async Task<IList<PickupLocation>> SearchProductPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria)
     {
         if (pickupLocationSearchService.Value == null)
         {
@@ -259,14 +259,14 @@ public class ProductPickupLocationService(
         }
 
         var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationSearchCriteria>.TryCreateInstance();
-        pickupLocationSearchCriteria.StoreId = storeId;
+        pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
         pickupLocationSearchCriteria.IsActive = true;
-        pickupLocationSearchCriteria.Keyword = keyword;
+        pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
 
         return await pickupLocationSearchService.Value.SearchAllNoCloneAsync(pickupLocationSearchCriteria);
     }
 
-    protected virtual async Task<PickupLocationIndexedSearchResult> SearchProductPickupLocationsIndexedAsync(string storeId, string facet, string filter)
+    protected virtual async Task<PickupLocationIndexedSearchResult> SearchProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
     {
         if (pickupLocationIndexedSearchService.Value == null)
         {
@@ -274,11 +274,12 @@ public class ProductPickupLocationService(
         }
 
         var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationIndexedSearchCriteria>.TryCreateInstance();
-        pickupLocationSearchCriteria.StoreId = storeId;
+        pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
         pickupLocationSearchCriteria.IsActive = true;
 
-        pickupLocationSearchCriteria.Facet = facet;
-        pickupLocationSearchCriteria.Filter = filter;
+        pickupLocationSearchCriteria.Facet = searchCriteria.Facet;
+        pickupLocationSearchCriteria.Filter = searchCriteria.Filter;
+        pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
 
         return await pickupLocationIndexedSearchService.Value.SearchPickupLocationsAsync(pickupLocationSearchCriteria);
     }
