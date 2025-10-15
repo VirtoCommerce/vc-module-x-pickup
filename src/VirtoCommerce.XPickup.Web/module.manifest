@@ -6,10 +6,10 @@
 
   <platformVersion>3.895.0</platformVersion>
   <dependencies>
-    <dependency id="VirtoCommerce.Xapi" version="3.924.0" />
+    <dependency id="VirtoCommerce.Xapi" version="3.925.0-alpha.122-vcst-3865-extracted-reusable-code" />
     <dependency id="VirtoCommerce.Catalog" version="3.891.0" />
     <dependency id="VirtoCommerce.Inventory" version="3.812.0" />
-    <dependency id="VirtoCommerce.Shipping" version="3.812.0" />
+    <dependency id="VirtoCommerce.Shipping" version="3.813.0-alpha.236-vcst-3865-pickup-locations-index" />
     <dependency id="VirtoCommerce.Cart" version="3.835.0" />
   </dependencies>
 
