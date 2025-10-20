@@ -142,7 +142,12 @@ public class ProductPickupLocationService(
         result.TotalCount = resultItems.Count;
         result.Results = ApplySort(resultItems, searchCriteria.Sort).Skip(searchCriteria.Skip).Take(searchCriteria.Take).ToList();
 
-        result.Facets = pickupLocations.Aggregations?.Select(x => mapper.Map<FacetResult>(x, options => { })).ToList() ?? [];
+        result.Facets = pickupLocations.Aggregations?
+            .Select(x => mapper.Map<FacetResult>(x, options =>
+            {
+                options.Items["cultureName"] = searchCriteria.LanguageCode;
+            }))
+            .ToList() ?? [];
 
         return result;
     }
