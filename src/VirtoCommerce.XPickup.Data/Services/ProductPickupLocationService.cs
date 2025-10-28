@@ -286,7 +286,7 @@ public class ProductPickupLocationService(
         pickupLocationSearchCriteria.Filter = searchCriteria.Filter;
         pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
 
-        return await pickupLocationIndexedSearchService.Value.SearchPickupLocationsAsync(pickupLocationSearchCriteria);
+        return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
     }
 
     protected virtual async Task<IList<InventoryInfo>> SearchProductInventoriesAsync(IList<string> productIds)
