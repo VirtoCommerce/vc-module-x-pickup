@@ -37,6 +37,8 @@ public class ProductPickupLocationService(
     ILocalizableSettingService localizableSettingService)
     : IProductPickupLocationService
 {
+    private const int PickupLocationsSearchTake = 500;
+
     public virtual async Task<ProductPickupLocationSearchResult> SearchPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria)
     {
         ArgumentNullException.ThrowIfNull(searchCriteria);
@@ -250,7 +252,6 @@ public class ProductPickupLocationService(
         shippingMethodsSearchCriteria.StoreId = storeId;
         shippingMethodsSearchCriteria.IsActive = true;
         shippingMethodsSearchCriteria.Codes = [ShippingConstants.BuyOnlinePickupInStoreShipmentCode];
-        shippingMethodsSearchCriteria.Skip = 0;
         shippingMethodsSearchCriteria.Take = 1;
 
         return (await shippingMethodsSearchService.Value.SearchNoCloneAsync(shippingMethodsSearchCriteria)).TotalCount > 0;
@@ -264,9 +265,13 @@ public class ProductPickupLocationService(
         }
 
         var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationSearchCriteria>.TryCreateInstance();
+
         pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
         pickupLocationSearchCriteria.IsActive = true;
+
         pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
+
+        pickupLocationSearchCriteria.Take = PickupLocationsSearchTake;
 
         return await pickupLocationSearchService.Value.SearchAllNoCloneAsync(pickupLocationSearchCriteria);
     }
@@ -279,12 +284,15 @@ public class ProductPickupLocationService(
         }
 
         var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationIndexedSearchCriteria>.TryCreateInstance();
+
         pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
         pickupLocationSearchCriteria.IsActive = true;
 
         pickupLocationSearchCriteria.Facet = searchCriteria.Facet;
         pickupLocationSearchCriteria.Filter = searchCriteria.Filter;
         pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
+
+        pickupLocationSearchCriteria.Take = PickupLocationsSearchTake;
 
         return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
     }
