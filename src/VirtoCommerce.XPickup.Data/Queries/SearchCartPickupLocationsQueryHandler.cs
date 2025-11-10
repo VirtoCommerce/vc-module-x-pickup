@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using VirtoCommerce.CartModule.Core.Services;
 using VirtoCommerce.Platform.Core.Common;
-using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Xapi.Core.Infrastructure;
 using VirtoCommerce.XPickup.Core.Models;
 using VirtoCommerce.XPickup.Core.Queries;
@@ -12,21 +11,14 @@ using VirtoCommerce.XPickup.Core.Services;
 
 namespace VirtoCommerce.XPickup.Data.Queries;
 
-public class SearchCartPickupLocationsQueryHandler(
-    IOptionalDependency<IProductPickupLocationService> productPickupLocationService,
-    IShoppingCartService shoppingCartService)
+public class SearchCartPickupLocationsQueryHandler(IProductPickupLocationService productPickupLocationService, IShoppingCartService shoppingCartService)
     : IQueryHandler<SearchCartPickupLocationsQuery, ProductPickupLocationSearchResult>
 {
     public async Task<ProductPickupLocationSearchResult> Handle(SearchCartPickupLocationsQuery request, CancellationToken cancellationToken)
     {
-        if (productPickupLocationService.Value == null)
-        {
-            return AbstractTypeFactory<ProductPickupLocationSearchResult>.TryCreateInstance();
-        }
-
         var searchCriteria = await CreateSearchCriteriaAsync(request);
 
-        return await productPickupLocationService.Value.SearchPickupLocationsAsync(searchCriteria);
+        return await productPickupLocationService.SearchPickupLocationsAsync(searchCriteria);
     }
 
     protected virtual async Task<MultipleProductsPickupLocationSearchCriteria> CreateSearchCriteriaAsync(SearchCartPickupLocationsQuery request)
