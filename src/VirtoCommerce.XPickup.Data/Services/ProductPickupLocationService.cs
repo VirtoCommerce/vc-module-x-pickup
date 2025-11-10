@@ -151,6 +151,8 @@ public class ProductPickupLocationService(
             }))
             .ToList() ?? [];
 
+        CleanupFacets(result);
+
         return result;
     }
 
@@ -407,5 +409,50 @@ public class ProductPickupLocationService(
         var score2 = GetAvailabilityScore(productAvailability2);
 
         return score1 < score2 ? productAvailability1 : productAvailability2;
+    }
+
+    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult)
+    {
+        var countryNameFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressCountryName)) as TermFacetResult;
+        var regionNameFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressRegionName)) as TermFacetResult;
+        var cityFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressCity)) as TermFacetResult;
+
+        if (countryNameFacet != null || regionNameFacet != null && cityFacet != null)
+        {
+            var addresses = searchResult.Results.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
+
+            if (countryNameFacet != null)
+            {
+                var countryNames = new HashSet<string>(addresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
+                countryNameFacet.Terms = countryNameFacet.Terms.Where(x => countryNames.Contains(x.Term)).ToList();
+
+                foreach (var term in countryNameFacet.Terms)
+                {
+                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.CountryName));
+                }
+            }
+
+            if (regionNameFacet != null)
+            {
+                var regionNames = new HashSet<string>(addresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
+                regionNameFacet.Terms = regionNameFacet.Terms.Where(x => regionNames.Contains(x.Term)).ToList();
+
+                foreach (var term in regionNameFacet.Terms)
+                {
+                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.RegionName));
+                }
+            }
+
+            if (cityFacet != null)
+            {
+                var cities = new HashSet<string>(addresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
+                cityFacet.Terms = cityFacet.Terms.Where(x => cities.Contains(x.Term)).ToList();
+
+                foreach (var term in cityFacet.Terms)
+                {
+                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.City));
+                }
+            }
+        }
     }
 }
