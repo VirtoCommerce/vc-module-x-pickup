@@ -424,6 +424,7 @@ public class ProductPickupLocationService(
             if (countryNameFacet != null)
             {
                 var countryNames = new HashSet<string>(addresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
+
                 countryNameFacet.Terms = countryNameFacet.Terms.Where(x => countryNames.Contains(x.Term)).ToList();
 
                 foreach (var term in countryNameFacet.Terms)
@@ -435,6 +436,7 @@ public class ProductPickupLocationService(
             if (regionNameFacet != null)
             {
                 var regionNames = new HashSet<string>(addresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
+
                 regionNameFacet.Terms = regionNameFacet.Terms.Where(x => regionNames.Contains(x.Term)).ToList();
 
                 foreach (var term in regionNameFacet.Terms)
@@ -446,6 +448,7 @@ public class ProductPickupLocationService(
             if (cityFacet != null)
             {
                 var cities = new HashSet<string>(addresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
+
                 cityFacet.Terms = cityFacet.Terms.Where(x => cities.Contains(x.Term)).ToList();
 
                 foreach (var term in cityFacet.Terms)
