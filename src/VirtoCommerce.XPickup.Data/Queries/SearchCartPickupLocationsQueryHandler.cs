@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using VirtoCommerce.CartModule.Core.Services;
 using VirtoCommerce.Platform.Core.Common;
-using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Xapi.Core.Infrastructure;
 using VirtoCommerce.XPickup.Core.Models;
 using VirtoCommerce.XPickup.Core.Queries;
@@ -12,12 +11,17 @@ using VirtoCommerce.XPickup.Core.Services;
 
 namespace VirtoCommerce.XPickup.Data.Queries;
 
-public class SearchCartPickupLocationsQueryHandler(
-    IOptionalDependency<IProductPickupLocationService> productPickupLocationService,
-    IShoppingCartService shoppingCartService)
+public class SearchCartPickupLocationsQueryHandler(IProductPickupLocationService productPickupLocationService, IShoppingCartService shoppingCartService)
     : IQueryHandler<SearchCartPickupLocationsQuery, ProductPickupLocationSearchResult>
 {
     public async Task<ProductPickupLocationSearchResult> Handle(SearchCartPickupLocationsQuery request, CancellationToken cancellationToken)
+    {
+        var searchCriteria = await CreateSearchCriteriaAsync(request);
+
+        return await productPickupLocationService.SearchPickupLocationsAsync(searchCriteria);
+    }
+
+    protected virtual async Task<MultipleProductsPickupLocationSearchCriteria> CreateSearchCriteriaAsync(SearchCartPickupLocationsQuery request)
     {
         var cart = await shoppingCartService.GetNoCloneAsync(request.CartId);
         if (cart == null)
@@ -25,26 +29,25 @@ public class SearchCartPickupLocationsQueryHandler(
             throw new InvalidOperationException($"Cart with id {request.CartId} not found");
         }
 
-        if (productPickupLocationService.Value == null)
-        {
-            return AbstractTypeFactory<ProductPickupLocationSearchResult>.TryCreateInstance();
-        }
+        var result = AbstractTypeFactory<MultipleProductsPickupLocationSearchCriteria>.TryCreateInstance();
 
-        var searchCriteria = AbstractTypeFactory<MultipleProductsPickupLocationSearchCriteria>.TryCreateInstance();
+        result.StoreId = request.StoreId;
 
-        searchCriteria.StoreId = request.StoreId;
-        searchCriteria.Products = cart.Items
+        result.Products = cart.Items
             .Where(x => x.SelectedForCheckout)
             .Select(x => new ProductPickupLocationSearchCriteriaItem { ProductId = x.ProductId, Quantity = x.Quantity })
             .ToDictionary(x => x.ProductId);
 
-        searchCriteria.Keyword = request.Keyword;
-        searchCriteria.LanguageCode = request.CultureName;
+        result.Keyword = request.Keyword;
+        result.LanguageCode = request.CultureName;
 
-        searchCriteria.Sort = request.Sort;
-        searchCriteria.Skip = request.Skip;
-        searchCriteria.Take = request.Take;
+        result.Facet = request.Facet;
+        result.Filter = request.Filter;
 
-        return await productPickupLocationService.Value.SearchPickupLocationsAsync(searchCriteria);
+        result.Sort = request.Sort;
+        result.Skip = request.Skip;
+        result.Take = request.Take;
+
+        return result;
     }
 }

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using AutoMapper;
 using VirtoCommerce.CatalogModule.Core.Model;
 using VirtoCommerce.CatalogModule.Core.Services;
 using VirtoCommerce.InventoryModule.Core.Model;
@@ -12,9 +13,12 @@ using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Platform.Core.Settings;
 using VirtoCommerce.ShippingModule.Core.Model;
 using VirtoCommerce.ShippingModule.Core.Model.Search;
+using VirtoCommerce.ShippingModule.Core.Model.Search.Indexed;
+using VirtoCommerce.ShippingModule.Core.Search.Indexed;
 using VirtoCommerce.ShippingModule.Core.Services;
 using VirtoCommerce.StoreModule.Core.Model;
 using VirtoCommerce.StoreModule.Core.Services;
+using VirtoCommerce.Xapi.Core.Models.Facets;
 using VirtoCommerce.XPickup.Core.Models;
 using VirtoCommerce.XPickup.Core.Services;
 using ShippingConstants = VirtoCommerce.ShippingModule.Core.ModuleConstants;
@@ -23,14 +27,18 @@ using XPickupConstants = VirtoCommerce.XPickup.Core.ModuleConstants;
 namespace VirtoCommerce.XPickup.Data.Services;
 
 public class ProductPickupLocationService(
+    IMapper mapper,
     IStoreService storeService,
     IItemService itemService,
     IOptionalDependency<IProductInventorySearchService> productInventorySearchService,
     IOptionalDependency<IShippingMethodsSearchService> shippingMethodsSearchService,
     IOptionalDependency<IPickupLocationSearchService> pickupLocationSearchService,
+    IOptionalDependency<IPickupLocationIndexedSearchService> pickupLocationIndexedSearchService,
     ILocalizableSettingService localizableSettingService)
     : IProductPickupLocationService
 {
+    private const int PickupLocationsSearchTake = 500;
+
     public virtual async Task<ProductPickupLocationSearchResult> SearchPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria)
     {
         ArgumentNullException.ThrowIfNull(searchCriteria);
@@ -60,7 +68,7 @@ public class ProductPickupLocationService(
 
         var globalTransferEnabled = GlobalTransferEnabled(store);
 
-        var pickupLocations = await SearchProductPickupLocationsAsync(searchCriteria.StoreId, searchCriteria.Keyword);
+        var pickupLocations = await SearchProductPickupLocationsAsync(searchCriteria);
 
         var productInventories = await SearchProductInventoriesAsync([searchCriteria.Product.ProductId]);
 
@@ -80,7 +88,10 @@ public class ProductPickupLocationService(
         }
 
         result.TotalCount = resultItems.Count;
-        result.Results = ApplySort(resultItems, searchCriteria.Sort).Skip(searchCriteria.Skip).Take(searchCriteria.Take).ToList();
+        result.Results = resultItems;
+
+        ApplySort(result, searchCriteria);
+        ApplyPaging(result, searchCriteria);
 
         return result;
     }
@@ -99,6 +110,7 @@ public class ProductPickupLocationService(
         }
 
         var result = AbstractTypeFactory<ProductPickupLocationSearchResult>.TryCreateInstance();
+        result.Facets = [];
 
         if (!await IsPickupInStoreEnabledAsync(searchCriteria.StoreId))
         {
@@ -116,13 +128,13 @@ public class ProductPickupLocationService(
 
         var products = await itemService.GetByIdsAsync(productIds, responseGroup: null, catalogId: null);
 
-        var pickupLocations = await SearchProductPickupLocationsAsync(searchCriteria.StoreId, searchCriteria.Keyword);
+        var pickupLocations = await SearchProductPickupLocationsIndexedAsync(searchCriteria);
 
         var productInventories = await SearchProductInventoriesAsync(productIds);
 
         var resultItems = new List<ProductPickupLocation>();
 
-        foreach (var pickupLocation in pickupLocations)
+        foreach (var pickupLocation in pickupLocations.Results)
         {
             var worstProductAvailability = GetWorstProductAvailability(store, products, pickupLocation, productInventories, searchCriteria, globalTransferEnabled);
 
@@ -134,7 +146,22 @@ public class ProductPickupLocationService(
         }
 
         result.TotalCount = resultItems.Count;
-        result.Results = ApplySort(resultItems, searchCriteria.Sort).Skip(searchCriteria.Skip).Take(searchCriteria.Take).ToList();
+        result.Results = resultItems;
+
+        if (pickupLocations.Aggregations != null)
+        {
+            result.Facets.AddRange(pickupLocations.Aggregations
+                .Select(x => mapper.Map<FacetResult>(x, options =>
+                {
+                    options.Items["cultureName"] = searchCriteria.LanguageCode;
+                }))
+             );
+
+            CleanupFacets(result);
+        }
+
+        ApplySort(result, searchCriteria);
+        ApplyPaging(result, searchCriteria);
 
         return result;
     }
@@ -237,13 +264,12 @@ public class ProductPickupLocationService(
         shippingMethodsSearchCriteria.StoreId = storeId;
         shippingMethodsSearchCriteria.IsActive = true;
         shippingMethodsSearchCriteria.Codes = [ShippingConstants.BuyOnlinePickupInStoreShipmentCode];
-        shippingMethodsSearchCriteria.Skip = 0;
         shippingMethodsSearchCriteria.Take = 1;
 
         return (await shippingMethodsSearchService.Value.SearchNoCloneAsync(shippingMethodsSearchCriteria)).TotalCount > 0;
     }
 
-    protected virtual async Task<IList<PickupLocation>> SearchProductPickupLocationsAsync(string storeId, string keyword)
+    protected virtual async Task<IList<PickupLocation>> SearchProductPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria)
     {
         if (pickupLocationSearchService.Value == null)
         {
@@ -251,11 +277,36 @@ public class ProductPickupLocationService(
         }
 
         var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationSearchCriteria>.TryCreateInstance();
-        pickupLocationSearchCriteria.StoreId = storeId;
+
+        pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
         pickupLocationSearchCriteria.IsActive = true;
-        pickupLocationSearchCriteria.Keyword = keyword;
+
+        pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
+
+        pickupLocationSearchCriteria.Take = PickupLocationsSearchTake;
 
         return await pickupLocationSearchService.Value.SearchAllNoCloneAsync(pickupLocationSearchCriteria);
+    }
+
+    protected virtual async Task<PickupLocationIndexedSearchResult> SearchProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
+    {
+        if (pickupLocationIndexedSearchService.Value == null)
+        {
+            return AbstractTypeFactory<PickupLocationIndexedSearchResult>.TryCreateInstance();
+        }
+
+        var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationIndexedSearchCriteria>.TryCreateInstance();
+
+        pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
+        pickupLocationSearchCriteria.IsActive = true;
+
+        pickupLocationSearchCriteria.Facet = searchCriteria.Facet;
+        pickupLocationSearchCriteria.Filter = searchCriteria.Filter;
+        pickupLocationSearchCriteria.Keyword = searchCriteria.Keyword;
+
+        pickupLocationSearchCriteria.Take = PickupLocationsSearchTake;
+
+        return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
     }
 
     protected virtual async Task<IList<InventoryInfo>> SearchProductInventoriesAsync(IList<string> productIds)
@@ -338,17 +389,24 @@ public class ProductPickupLocationService(
         return store.Settings.GetValue<bool>(XPickupConstants.Settings.GlobalTransferEnabled);
     }
 
-    protected virtual IEnumerable<ProductPickupLocation> ApplySort(IList<ProductPickupLocation> items, string sort)
+    protected virtual void ApplySort(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
     {
-        if (sort.IsNullOrEmpty())
+        if (searchCriteria.Sort.IsNullOrEmpty())
         {
-            return items
+            searchResult.Results = searchResult.Results
                 .OrderByDescending(x => GetAvailabilityScore(x.AvailabilityType))
                 .ThenByDescending(x => x.AvailableQuantity)
-                .ThenBy(x => x.PickupLocation.Name);
+                .ThenBy(x => x.PickupLocation.Name)
+                .ToList();
         }
+    }
 
-        return items;
+    protected virtual void ApplyPaging(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
+    {
+        searchResult.Results = searchResult.Results
+             .Skip(searchCriteria.Skip)
+             .Take(searchCriteria.Take)
+             .ToList();
     }
 
     protected virtual int GetAvailabilityScore(string availabilityType)
@@ -368,5 +426,53 @@ public class ProductPickupLocationService(
         var score2 = GetAvailabilityScore(productAvailability2);
 
         return score1 < score2 ? productAvailability1 : productAvailability2;
+    }
+
+    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult)
+    {
+        var countryNameFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressCountryName)) as TermFacetResult;
+        var regionNameFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressRegionName)) as TermFacetResult;
+        var cityFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressCity)) as TermFacetResult;
+
+        if (countryNameFacet != null || regionNameFacet != null && cityFacet != null)
+        {
+            var addresses = searchResult.Results.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
+
+            if (countryNameFacet != null)
+            {
+                var countryNames = new HashSet<string>(addresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
+
+                countryNameFacet.Terms = countryNameFacet.Terms.Where(x => countryNames.Contains(x.Term)).ToList();
+
+                foreach (var term in countryNameFacet.Terms)
+                {
+                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.CountryName));
+                }
+            }
+
+            if (regionNameFacet != null)
+            {
+                var regionNames = new HashSet<string>(addresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
+
+                regionNameFacet.Terms = regionNameFacet.Terms.Where(x => regionNames.Contains(x.Term)).ToList();
+
+                foreach (var term in regionNameFacet.Terms)
+                {
+                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.RegionName));
+                }
+            }
+
+            if (cityFacet != null)
+            {
+                var cities = new HashSet<string>(addresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
+
+                cityFacet.Terms = cityFacet.Terms.Where(x => cities.Contains(x.Term)).ToList();
+
+                foreach (var term in cityFacet.Terms)
+                {
+                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.City));
+                }
+            }
+        }
     }
 }

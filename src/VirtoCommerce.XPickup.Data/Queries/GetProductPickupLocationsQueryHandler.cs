@@ -1,7 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using VirtoCommerce.Platform.Core.Common;
-using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Xapi.Core.Infrastructure;
 using VirtoCommerce.XPickup.Core.Models;
 using VirtoCommerce.XPickup.Core.Queries;
@@ -9,16 +8,11 @@ using VirtoCommerce.XPickup.Core.Services;
 
 namespace VirtoCommerce.XPickup.Data.Queries;
 
-public class GetProductPickupLocationsQueryHandler(IOptionalDependency<IProductPickupLocationService> productPickupLocationService)
+public class GetProductPickupLocationsQueryHandler(IProductPickupLocationService productPickupLocationService)
     : IQueryHandler<SearchProductPickupLocationsQuery, ProductPickupLocationSearchResult>
 {
     public async Task<ProductPickupLocationSearchResult> Handle(SearchProductPickupLocationsQuery request, CancellationToken cancellationToken)
     {
-        if (productPickupLocationService.Value == null)
-        {
-            return AbstractTypeFactory<ProductPickupLocationSearchResult>.TryCreateInstance();
-        }
-
         var searchCriteria = AbstractTypeFactory<SingleProductPickupLocationSearchCriteria>.TryCreateInstance();
 
         searchCriteria.StoreId = request.StoreId;
@@ -30,6 +24,6 @@ public class GetProductPickupLocationsQueryHandler(IOptionalDependency<IProductP
         searchCriteria.Skip = request.Skip;
         searchCriteria.Take = request.Take;
 
-        return await productPickupLocationService.Value.SearchPickupLocationsAsync(searchCriteria);
+        return await productPickupLocationService.SearchPickupLocationsAsync(searchCriteria);
     }
 }
