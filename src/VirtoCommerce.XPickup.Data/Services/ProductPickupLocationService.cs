@@ -107,6 +107,7 @@ public class ProductPickupLocationService(
         }
 
         var result = AbstractTypeFactory<ProductPickupLocationSearchResult>.TryCreateInstance();
+        result.Facets = [];
 
         if (!await IsPickupInStoreEnabledAsync(searchCriteria.StoreId))
         {
@@ -144,14 +145,17 @@ public class ProductPickupLocationService(
         result.TotalCount = resultItems.Count;
         result.Results = ApplySort(resultItems, searchCriteria.Sort).Skip(searchCriteria.Skip).Take(searchCriteria.Take).ToList();
 
-        result.Facets = pickupLocations.Aggregations?
-            .Select(x => mapper.Map<FacetResult>(x, options =>
-            {
-                options.Items["cultureName"] = searchCriteria.LanguageCode;
-            }))
-            .ToList() ?? [];
+        if (pickupLocations.Aggregations != null)
+        {
+            result.Facets.AddRange(pickupLocations.Aggregations
+                .Select(x => mapper.Map<FacetResult>(x, options =>
+                {
+                    options.Items["cultureName"] = searchCriteria.LanguageCode;
+                }))
+             );
 
-        CleanupFacets(result);
+            CleanupFacets(result);
+        }
 
         return result;
     }
