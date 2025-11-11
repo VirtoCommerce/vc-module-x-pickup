@@ -88,7 +88,10 @@ public class ProductPickupLocationService(
         }
 
         result.TotalCount = resultItems.Count;
-        result.Results = ApplySort(resultItems, searchCriteria.Sort).Skip(searchCriteria.Skip).Take(searchCriteria.Take).ToList();
+        result.Results = resultItems;
+
+        ApplySort(result, searchCriteria);
+        ApplyPaging(result, searchCriteria);
 
         return result;
     }
@@ -143,7 +146,7 @@ public class ProductPickupLocationService(
         }
 
         result.TotalCount = resultItems.Count;
-        result.Results = ApplySort(resultItems, searchCriteria.Sort).Skip(searchCriteria.Skip).Take(searchCriteria.Take).ToList();
+        result.Results = resultItems;
 
         if (pickupLocations.Aggregations != null)
         {
@@ -156,6 +159,9 @@ public class ProductPickupLocationService(
 
             CleanupFacets(result);
         }
+
+        ApplySort(result, searchCriteria);
+        ApplyPaging(result, searchCriteria);
 
         return result;
     }
@@ -383,17 +389,24 @@ public class ProductPickupLocationService(
         return store.Settings.GetValue<bool>(XPickupConstants.Settings.GlobalTransferEnabled);
     }
 
-    protected virtual IEnumerable<ProductPickupLocation> ApplySort(IList<ProductPickupLocation> items, string sort)
+    protected virtual void ApplySort(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
     {
-        if (sort.IsNullOrEmpty())
+        if (searchCriteria.Sort.IsNullOrEmpty())
         {
-            return items
+            searchResult.Results = searchResult.Results
                 .OrderByDescending(x => GetAvailabilityScore(x.AvailabilityType))
                 .ThenByDescending(x => x.AvailableQuantity)
-                .ThenBy(x => x.PickupLocation.Name);
+                .ThenBy(x => x.PickupLocation.Name)
+                .ToList();
         }
+    }
 
-        return items;
+    protected virtual void ApplyPaging(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
+    {
+        searchResult.Results = searchResult.Results
+             .Skip(searchCriteria.Skip)
+             .Take(searchCriteria.Take)
+             .ToList();
     }
 
     protected virtual int GetAvailabilityScore(string availabilityType)
