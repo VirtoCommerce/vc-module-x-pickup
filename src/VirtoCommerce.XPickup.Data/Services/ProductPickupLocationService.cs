@@ -11,6 +11,8 @@ using VirtoCommerce.InventoryModule.Core.Services;
 using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.Platform.Core.Modularity;
 using VirtoCommerce.Platform.Core.Settings;
+using VirtoCommerce.SearchModule.Core.Model;
+using VirtoCommerce.SearchModule.Core.Services;
 using VirtoCommerce.ShippingModule.Core.Model;
 using VirtoCommerce.ShippingModule.Core.Model.Search;
 using VirtoCommerce.ShippingModule.Core.Model.Search.Indexed;
@@ -34,7 +36,8 @@ public class ProductPickupLocationService(
     IOptionalDependency<IShippingMethodsSearchService> shippingMethodsSearchService,
     IOptionalDependency<IPickupLocationSearchService> pickupLocationSearchService,
     IOptionalDependency<IPickupLocationIndexedSearchService> pickupLocationIndexedSearchService,
-    ILocalizableSettingService localizableSettingService)
+    ILocalizableSettingService localizableSettingService,
+    ISearchPhraseParser searchPhraseParser)
     : IProductPickupLocationService
 {
     private const int PickupLocationsSearchTake = 500;
@@ -72,20 +75,7 @@ public class ProductPickupLocationService(
 
         var productInventories = await SearchProductInventoriesAsync([searchCriteria.Product.ProductId]);
 
-        var resultItems = new List<ProductPickupLocation>();
-
-        foreach (var pickupLocation in pickupLocations)
-        {
-            var pickupLocationProductInventories = productInventories
-                .Where(x => x.FulfillmentCenterId == pickupLocation.FulfillmentCenterId || pickupLocation.TransferFulfillmentCenterIds.Contains(x.FulfillmentCenterId))
-                .ToList();
-
-            var productPickupLocation = await GetProductPickupLocationAsync(product, pickupLocation, pickupLocationProductInventories, searchCriteria.Product.Quantity, searchCriteria.LanguageCode, globalTransferEnabled);
-            if (productPickupLocation != null)
-            {
-                resultItems.Add(productPickupLocation);
-            }
-        }
+        var resultItems = await SearchProductPickupLicationsAsync(product, pickupLocations, productInventories, searchCriteria, globalTransferEnabled);
 
         result.TotalCount = resultItems.Count;
         result.Results = resultItems;
@@ -132,6 +122,63 @@ public class ProductPickupLocationService(
 
         var productInventories = await SearchProductInventoriesAsync(productIds);
 
+        var resultItems = await SearchProductsPickupLicationsAsync(store, products, pickupLocations, productInventories, searchCriteria, globalTransferEnabled);
+
+        result.TotalCount = resultItems.Count;
+        result.Results = resultItems;
+
+        if (pickupLocations.Aggregations != null)
+        {
+            List<ProductPickupLocation> allResultItems;
+            if (!searchCriteria.Keyword.IsNullOrEmpty() || !searchCriteria.Filter.IsNullOrEmpty())
+            {
+                var allPickupLocations = await SearchAllProductPickupLocationsIndexedAsync(searchCriteria);
+
+                allResultItems = await SearchProductsPickupLicationsAsync(store, products, allPickupLocations, productInventories, searchCriteria, globalTransferEnabled);
+            }
+            else
+            {
+                allResultItems = resultItems;
+            }
+
+            result.Facets.AddRange(pickupLocations.Aggregations
+                .Select(x => mapper.Map<FacetResult>(x, options =>
+                {
+                    options.Items["cultureName"] = searchCriteria.LanguageCode;
+                }))
+            );
+
+            CleanupFacets(result, searchCriteria, allResultItems);
+        }
+
+        ApplySort(result, searchCriteria);
+        ApplyPaging(result, searchCriteria);
+
+        return result;
+    }
+
+    protected virtual async Task<List<ProductPickupLocation>> SearchProductPickupLicationsAsync(CatalogProduct product, IList<PickupLocation> pickupLocations, IList<InventoryInfo> productInventories, SingleProductPickupLocationSearchCriteria searchCriteria, bool globalTransferEnabled)
+    {
+        var resultItems = new List<ProductPickupLocation>();
+
+        foreach (var pickupLocation in pickupLocations)
+        {
+            var pickupLocationProductInventories = productInventories
+                .Where(x => x.FulfillmentCenterId == pickupLocation.FulfillmentCenterId || pickupLocation.TransferFulfillmentCenterIds.Contains(x.FulfillmentCenterId))
+                .ToList();
+
+            var productPickupLocation = await GetProductPickupLocationAsync(product, pickupLocation, pickupLocationProductInventories, searchCriteria.Product.Quantity, searchCriteria.LanguageCode, globalTransferEnabled);
+            if (productPickupLocation != null)
+            {
+                resultItems.Add(productPickupLocation);
+            }
+        }
+
+        return resultItems;
+    }
+
+    protected virtual async Task<List<ProductPickupLocation>> SearchProductsPickupLicationsAsync(Store store, IList<CatalogProduct> products, PickupLocationIndexedSearchResult pickupLocations, IList<InventoryInfo> productInventories, MultipleProductsPickupLocationSearchCriteria searchCriteria, bool globalTransferEnabled)
+    {
         var resultItems = new List<ProductPickupLocation>();
 
         foreach (var pickupLocation in pickupLocations.Results)
@@ -145,25 +192,7 @@ public class ProductPickupLocationService(
             }
         }
 
-        result.TotalCount = resultItems.Count;
-        result.Results = resultItems;
-
-        if (pickupLocations.Aggregations != null)
-        {
-            result.Facets.AddRange(pickupLocations.Aggregations
-                .Select(x => mapper.Map<FacetResult>(x, options =>
-                {
-                    options.Items["cultureName"] = searchCriteria.LanguageCode;
-                }))
-             );
-
-            //CleanupFacets(result);
-        }
-
-        ApplySort(result, searchCriteria);
-        ApplyPaging(result, searchCriteria);
-
-        return result;
+        return resultItems;
     }
 
     protected virtual string GetWorstProductAvailability(Store store, IList<CatalogProduct> products, PickupLocation pickupLocation, IList<InventoryInfo> productInventories, MultipleProductsPickupLocationSearchCriteria searchCriteria, bool globalTransferEnabled)
@@ -309,6 +338,23 @@ public class ProductPickupLocationService(
         return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
     }
 
+    protected virtual async Task<PickupLocationIndexedSearchResult> SearchAllProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
+    {
+        if (pickupLocationIndexedSearchService.Value == null)
+        {
+            return AbstractTypeFactory<PickupLocationIndexedSearchResult>.TryCreateInstance();
+        }
+
+        var pickupLocationSearchCriteria = AbstractTypeFactory<PickupLocationIndexedSearchCriteria>.TryCreateInstance();
+
+        pickupLocationSearchCriteria.StoreId = searchCriteria.StoreId;
+        pickupLocationSearchCriteria.IsActive = true;
+
+        pickupLocationSearchCriteria.Take = PickupLocationsSearchTake;
+
+        return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
+    }
+
     protected virtual async Task<IList<InventoryInfo>> SearchProductInventoriesAsync(IList<string> productIds)
     {
         if (productInventorySearchService.Value == null)
@@ -428,49 +474,70 @@ public class ProductPickupLocationService(
         return score1 < score2 ? productAvailability1 : productAvailability2;
     }
 
-    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult)
+    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult, MultipleProductsPickupLocationSearchCriteria searchCriteria, List<ProductPickupLocation> allProductPickupLocations)
     {
+        var countryNameFilterApplied = false;
+        var regionNameFilterApplied = false;
+        var cityFilterApplied = false;
+
+        if (!searchCriteria.Filter.IsNullOrEmpty())
+        {
+            var parsedFilter = searchPhraseParser.Parse(searchCriteria.Filter);
+            var termFilters = parsedFilter.Filters.Where(x => x is TermFilter).Select(x => (TermFilter)x).ToList();
+
+            countryNameFilterApplied = termFilters.Any(x => x.FieldName.EqualsIgnoreCase(PickupLocationIndexFields.AddressCountryName));
+            regionNameFilterApplied = termFilters.Any(x => x.FieldName.EqualsIgnoreCase(PickupLocationIndexFields.AddressRegionName));
+            cityFilterApplied = termFilters.Any(x => x.FieldName.EqualsIgnoreCase(PickupLocationIndexFields.AddressCity));
+        }
+
         var countryNameFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressCountryName)) as TermFacetResult;
         var regionNameFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressRegionName)) as TermFacetResult;
         var cityFacet = searchResult.Facets.FirstOrDefault(x => x.Name.EqualsIgnoreCase(PickupLocationIndexFields.AddressCity)) as TermFacetResult;
 
-        if (countryNameFacet != null || regionNameFacet != null && cityFacet != null)
+        if (countryNameFacet != null || regionNameFacet != null || cityFacet != null)
         {
-            var addresses = searchResult.Results.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
+            var filteredAddresses = searchResult.Results.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
+            var allAddresses = allProductPickupLocations.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
 
-            if (countryNameFacet != null)
+            if (countryNameFacet != null && !countryNameFilterApplied)
             {
-                var countryNames = new HashSet<string>(addresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
+                var sourceAddresses = countryNameFilterApplied ? allAddresses : filteredAddresses;
+
+                var countryNames = new HashSet<string>(sourceAddresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
 
                 countryNameFacet.Terms = countryNameFacet.Terms.Where(x => countryNames.Contains(x.Term)).ToList();
 
                 foreach (var term in countryNameFacet.Terms)
                 {
-                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.CountryName));
+                    term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.CountryName));
                 }
             }
 
             if (regionNameFacet != null)
             {
-                var regionNames = new HashSet<string>(addresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
+                var sourceAddresses = regionNameFilterApplied ? allAddresses : filteredAddresses;
+
+                var regionNames = new HashSet<string>(sourceAddresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
 
                 regionNameFacet.Terms = regionNameFacet.Terms.Where(x => regionNames.Contains(x.Term)).ToList();
 
                 foreach (var term in regionNameFacet.Terms)
                 {
-                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.RegionName));
+                    term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.RegionName));
                 }
             }
 
             if (cityFacet != null)
             {
-                var cities = new HashSet<string>(addresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
+                var sourceAddresses = cityFilterApplied ? allAddresses : filteredAddresses;
+
+                var cities = new HashSet<string>(sourceAddresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
 
                 cityFacet.Terms = cityFacet.Terms.Where(x => cities.Contains(x.Term)).ToList();
 
                 foreach (var term in cityFacet.Terms)
                 {
-                    term.Count = addresses.Count(x => term.Term.EqualsIgnoreCase(x.City));
+                    term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.City));
                 }
             }
         }
