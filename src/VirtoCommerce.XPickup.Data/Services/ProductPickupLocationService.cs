@@ -157,7 +157,7 @@ public class ProductPickupLocationService(
                 }))
              );
 
-            CleanupFacets(result);
+            //CleanupFacets(result);
         }
 
         ApplySort(result, searchCriteria);
