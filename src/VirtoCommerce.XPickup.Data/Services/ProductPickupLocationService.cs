@@ -129,6 +129,13 @@ public class ProductPickupLocationService(
 
         if (pickupLocations.Aggregations != null)
         {
+            result.Facets.AddRange(pickupLocations.Aggregations
+                .Select(x => mapper.Map<FacetResult>(x, options =>
+                {
+                    options.Items["cultureName"] = searchCriteria.LanguageCode;
+                }))
+            );
+
             List<ProductPickupLocation> allResultItems;
             if (!searchCriteria.Keyword.IsNullOrEmpty() || !searchCriteria.Filter.IsNullOrEmpty())
             {
@@ -140,13 +147,6 @@ public class ProductPickupLocationService(
             {
                 allResultItems = resultItems;
             }
-
-            result.Facets.AddRange(pickupLocations.Aggregations
-                .Select(x => mapper.Map<FacetResult>(x, options =>
-                {
-                    options.Items["cultureName"] = searchCriteria.LanguageCode;
-                }))
-            );
 
             CleanupFacets(result, searchCriteria, allResultItems);
         }
@@ -474,7 +474,7 @@ public class ProductPickupLocationService(
         return score1 < score2 ? productAvailability1 : productAvailability2;
     }
 
-    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult, MultipleProductsPickupLocationSearchCriteria searchCriteria, List<ProductPickupLocation> allProductPickupLocations)
+    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult, MultipleProductsPickupLocationSearchCriteria searchCriteria, IList<ProductPickupLocation> allProductPickupLocations)
     {
         var countryNameFilterApplied = false;
         var regionNameFilterApplied = false;
@@ -483,7 +483,7 @@ public class ProductPickupLocationService(
         if (!searchCriteria.Filter.IsNullOrEmpty())
         {
             var parsedFilter = searchPhraseParser.Parse(searchCriteria.Filter);
-            var termFilters = parsedFilter.Filters.Where(x => x is TermFilter).Select(x => (TermFilter)x).ToList();
+            var termFilters = parsedFilter.Filters.OfType<TermFilter>().ToList();
 
             countryNameFilterApplied = termFilters.Any(x => x.FieldName.EqualsIgnoreCase(PickupLocationIndexFields.AddressCountryName));
             regionNameFilterApplied = termFilters.Any(x => x.FieldName.EqualsIgnoreCase(PickupLocationIndexFields.AddressRegionName));
@@ -499,47 +499,62 @@ public class ProductPickupLocationService(
             var filteredAddresses = searchResult.Results.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
             var allAddresses = allProductPickupLocations.Where(x => x.PickupLocation.Address != null).Select(x => x.PickupLocation.Address).ToList();
 
-            if (countryNameFacet != null && !countryNameFilterApplied)
+            if (countryNameFacet != null)
             {
-                var sourceAddresses = countryNameFilterApplied ? allAddresses : filteredAddresses;
-
-                var countryNames = new HashSet<string>(sourceAddresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
-
-                countryNameFacet.Terms = countryNameFacet.Terms.Where(x => countryNames.Contains(x.Term)).ToList();
-
-                foreach (var term in countryNameFacet.Terms)
-                {
-                    term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.CountryName));
-                }
+                CleanupCountryNameFacet(countryNameFacet, countryNameFilterApplied, filteredAddresses, allAddresses);
             }
 
             if (regionNameFacet != null)
             {
-                var sourceAddresses = regionNameFilterApplied ? allAddresses : filteredAddresses;
-
-                var regionNames = new HashSet<string>(sourceAddresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
-
-                regionNameFacet.Terms = regionNameFacet.Terms.Where(x => regionNames.Contains(x.Term)).ToList();
-
-                foreach (var term in regionNameFacet.Terms)
-                {
-                    term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.RegionName));
-                }
+                CleanupRegionNameFacet(regionNameFacet, regionNameFilterApplied, filteredAddresses, allAddresses);
             }
 
             if (cityFacet != null)
             {
-                var sourceAddresses = cityFilterApplied ? allAddresses : filteredAddresses;
-
-                var cities = new HashSet<string>(sourceAddresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
-
-                cityFacet.Terms = cityFacet.Terms.Where(x => cities.Contains(x.Term)).ToList();
-
-                foreach (var term in cityFacet.Terms)
-                {
-                    term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.City));
-                }
+                CleanupCityFacet(cityFacet, cityFilterApplied, filteredAddresses, allAddresses);
             }
+        }
+    }
+
+    protected virtual void CleanupCountryNameFacet(TermFacetResult countryNameFacet, bool countryNameFilterApplied, List<PickupLocationAddress> filteredAddresses, List<PickupLocationAddress> allAddresses)
+    {
+        var sourceAddresses = countryNameFilterApplied ? allAddresses : filteredAddresses;
+
+        var countryNames = new HashSet<string>(sourceAddresses.Select(x => x.CountryName), StringComparer.OrdinalIgnoreCase);
+
+        countryNameFacet.Terms = countryNameFacet.Terms.Where(x => countryNames.Contains(x.Term)).ToList();
+
+        foreach (var term in countryNameFacet.Terms)
+        {
+            term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.CountryName));
+        }
+    }
+
+    protected virtual void CleanupRegionNameFacet(TermFacetResult regionNameFacet, bool regionNameFilterApplied, List<PickupLocationAddress> filteredAddresses, List<PickupLocationAddress> allAddresses)
+    {
+        var sourceAddresses = regionNameFilterApplied ? allAddresses : filteredAddresses;
+
+        var regionNames = new HashSet<string>(sourceAddresses.Select(x => x.RegionName), StringComparer.OrdinalIgnoreCase);
+
+        regionNameFacet.Terms = regionNameFacet.Terms.Where(x => regionNames.Contains(x.Term)).ToList();
+
+        foreach (var term in regionNameFacet.Terms)
+        {
+            term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.RegionName));
+        }
+    }
+
+    protected virtual void CleanupCityFacet(TermFacetResult cityFacet, bool cityFilterApplied, List<PickupLocationAddress> filteredAddresses, List<PickupLocationAddress> allAddresses)
+    {
+        var sourceAddresses = cityFilterApplied ? allAddresses : filteredAddresses;
+
+        var cities = new HashSet<string>(sourceAddresses.Select(x => x.City), StringComparer.OrdinalIgnoreCase);
+
+        cityFacet.Terms = cityFacet.Terms.Where(x => cities.Contains(x.Term)).ToList();
+
+        foreach (var term in cityFacet.Terms)
+        {
+            term.Count = sourceAddresses.Count(x => term.Term.EqualsIgnoreCase(x.City));
         }
     }
 }
