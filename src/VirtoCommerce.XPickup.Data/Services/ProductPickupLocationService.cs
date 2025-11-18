@@ -157,7 +157,12 @@ public class ProductPickupLocationService(
         return result;
     }
 
-    protected virtual async Task<List<ProductPickupLocation>> SearchProductPickupLicationsAsync(CatalogProduct product, IList<PickupLocation> pickupLocations, IList<InventoryInfo> productInventories, SingleProductPickupLocationSearchCriteria searchCriteria, bool globalTransferEnabled)
+    protected virtual async Task<List<ProductPickupLocation>> SearchProductPickupLicationsAsync(
+        CatalogProduct product,
+        IList<PickupLocation> pickupLocations,
+        IList<InventoryInfo> productInventories,
+        SingleProductPickupLocationSearchCriteria searchCriteria,
+        bool globalTransferEnabled)
     {
         var resultItems = new List<ProductPickupLocation>();
 
@@ -177,7 +182,12 @@ public class ProductPickupLocationService(
         return resultItems;
     }
 
-    protected virtual async Task<List<ProductPickupLocation>> SearchProductsPickupLicationsAsync(Store store, IList<CatalogProduct> products, PickupLocationIndexedSearchResult pickupLocations, IList<InventoryInfo> productInventories, MultipleProductsPickupLocationSearchCriteria searchCriteria, bool globalTransferEnabled)
+    protected virtual async Task<List<ProductPickupLocation>> SearchProductsPickupLicationsAsync(
+        Store store, IList<CatalogProduct> products,
+        PickupLocationIndexedSearchResult pickupLocations,
+        IList<InventoryInfo> productInventories,
+        MultipleProductsPickupLocationSearchCriteria searchCriteria,
+        bool globalTransferEnabled)
     {
         var resultItems = new List<ProductPickupLocation>();
 
@@ -195,7 +205,13 @@ public class ProductPickupLocationService(
         return resultItems;
     }
 
-    protected virtual string GetWorstProductAvailability(Store store, IList<CatalogProduct> products, PickupLocation pickupLocation, IList<InventoryInfo> productInventories, MultipleProductsPickupLocationSearchCriteria searchCriteria, bool globalTransferEnabled)
+    protected virtual string GetWorstProductAvailability(
+        Store store,
+        IList<CatalogProduct> products,
+        PickupLocation pickupLocation,
+        IList<InventoryInfo> productInventories,
+        MultipleProductsPickupLocationSearchCriteria searchCriteria,
+        bool globalTransferEnabled)
     {
         var worstAvailabilityPossible = globalTransferEnabled ? ProductPickupAvailability.GlobalTransfer : null;
 
@@ -228,7 +244,13 @@ public class ProductPickupLocationService(
         return worstProductAvailability;
     }
 
-    protected virtual async Task<ProductPickupLocation> GetProductPickupLocationAsync(CatalogProduct product, PickupLocation pickupLocation, IList<InventoryInfo> pickupLocationProductInventories, long minQuantity, string cultureName, bool globalTransferEnabled)
+    protected virtual async Task<ProductPickupLocation> GetProductPickupLocationAsync(
+        CatalogProduct product,
+        PickupLocation pickupLocation,
+        IList<InventoryInfo> pickupLocationProductInventories,
+        long minQuantity,
+        string cultureName,
+        bool globalTransferEnabled)
     {
         if (!product.TrackInventory.GetValueOrDefault())
         {
@@ -255,7 +277,14 @@ public class ProductPickupLocationService(
         return null;
     }
 
-    protected virtual string GetProductPickupLocationAvailability(Store store, CatalogProduct product, PickupLocation pickupLocation, IList<InventoryInfo> pickupLocationProductInventories, long minQuantity, string cultureName, bool globalTransferEnabled)
+    protected virtual string GetProductPickupLocationAvailability(
+        Store store,
+        CatalogProduct product,
+        PickupLocation pickupLocation,
+        IList<InventoryInfo> pickupLocationProductInventories,
+        long minQuantity,
+        string cultureName,
+        bool globalTransferEnabled)
     {
         if (!product.TrackInventory.GetValueOrDefault())
         {
