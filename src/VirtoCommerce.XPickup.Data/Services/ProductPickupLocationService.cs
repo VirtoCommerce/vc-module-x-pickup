@@ -200,7 +200,7 @@ public class ProductPickupLocationService(
         return resultItems;
     }
 
-    private string GetWorstProductAvailability(
+    private static string GetWorstProductAvailability(
         IList<CatalogProduct> products,
         PickupLocation pickupLocation,
         IList<InventoryInfo> productInventories,
@@ -456,7 +456,7 @@ public class ProductPickupLocationService(
         return store.Settings.GetValue<bool>(XPickupConstants.Settings.GlobalTransferEnabled);
     }
 
-    private void ApplySort(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
+    private static void ApplySort(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
     {
         if (searchCriteria.Sort.IsNullOrEmpty())
         {
@@ -468,7 +468,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    private void ApplyPaging(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
+    private static void ApplyPaging(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
     {
         searchResult.Results = searchResult.Results
              .Skip(searchCriteria.Skip)
@@ -476,7 +476,7 @@ public class ProductPickupLocationService(
              .ToList();
     }
 
-    private int GetAvailabilityScore(string availabilityType)
+    private static int GetAvailabilityScore(string availabilityType)
     {
         return availabilityType switch
         {
@@ -487,7 +487,7 @@ public class ProductPickupLocationService(
         };
     }
 
-    private string GetWorstAvailability(string productAvailability1, string productAvailability2)
+    private static string GetWorstAvailability(string productAvailability1, string productAvailability2)
     {
         var score1 = GetAvailabilityScore(productAvailability1);
         var score2 = GetAvailabilityScore(productAvailability2);
@@ -537,7 +537,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    private void CleanupCountryNameFacet(TermFacetResult countryNameFacet, TermFilter countryNameFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
+    private static void CleanupCountryNameFacet(TermFacetResult countryNameFacet, TermFilter countryNameFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
     {
         var filterApplied = countryNameFilter != null;
 
@@ -552,7 +552,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    private void CleanupRegionNameFacet(TermFacetResult regionNameFacet, TermFilter regionNameFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
+    private static void CleanupRegionNameFacet(TermFacetResult regionNameFacet, TermFilter regionNameFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
     {
         var filterApplied = regionNameFilter != null;
 
@@ -567,7 +567,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    private void CleanupCityFacet(TermFacetResult cityFacet, TermFilter cityFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
+    private static void CleanupCityFacet(TermFacetResult cityFacet, TermFilter cityFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
     {
         var filterApplied = cityFilter != null;
 
