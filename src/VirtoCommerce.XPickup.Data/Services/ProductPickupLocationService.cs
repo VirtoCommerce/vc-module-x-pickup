@@ -72,10 +72,8 @@ public class ProductPickupLocationService(
         var globalTransferEnabled = GlobalTransferEnabled(store);
 
         var pickupLocations = await SearchProductPickupLocationsAsync(searchCriteria);
-
         var productInventories = await SearchProductInventoriesAsync([searchCriteria.Product.ProductId]);
-
-        var resultItems = await SearchProductPickupLicationsAsync(product, pickupLocations, productInventories, searchCriteria, globalTransferEnabled);
+        var resultItems = await SearchProductPickupLocationsAsync(product, pickupLocations, productInventories, searchCriteria, globalTransferEnabled);
 
         result.TotalCount = resultItems.Count;
         result.Results = resultItems;
@@ -102,27 +100,24 @@ public class ProductPickupLocationService(
         var result = AbstractTypeFactory<ProductPickupLocationSearchResult>.TryCreateInstance();
         result.Facets = [];
 
-        if (!await IsPickupInStoreEnabledAsync(searchCriteria.StoreId))
+        if (searchCriteria.Products.Count == 0)
         {
             return result;
         }
 
-        if (searchCriteria.Products.Count == 0)
+        var productIds = searchCriteria.Products.Keys.ToList();
+        var products = await itemService.GetAsync(productIds);
+
+        if (products.Count == 0 || !await IsPickupInStoreEnabledAsync(searchCriteria.StoreId))
         {
             return result;
         }
 
         var globalTransferEnabled = GlobalTransferEnabled(store);
 
-        var productIds = searchCriteria.Products.Keys.ToList();
-
-        var products = await itemService.GetByIdsAsync(productIds, responseGroup: null, catalogId: null);
-
         var pickupLocations = await SearchProductPickupLocationsIndexedAsync(searchCriteria);
-
         var productInventories = await SearchProductInventoriesAsync(productIds);
-
-        var resultItems = await SearchProductsPickupLicationsAsync(store, products, pickupLocations, productInventories, searchCriteria, globalTransferEnabled);
+        var resultItems = await SearchProductPickupLocationsAsync(products, pickupLocations, productInventories, searchCriteria, globalTransferEnabled);
 
         result.TotalCount = resultItems.Count;
         result.Results = resultItems;
@@ -136,12 +131,12 @@ public class ProductPickupLocationService(
                 }))
             );
 
-            List<ProductPickupLocation> allResultItems;
+            IList<ProductPickupLocation> allResultItems;
             if (!searchCriteria.Keyword.IsNullOrEmpty() || !searchCriteria.Filter.IsNullOrEmpty())
             {
                 var allPickupLocations = await SearchAllProductPickupLocationsIndexedAsync(searchCriteria);
 
-                allResultItems = await SearchProductsPickupLicationsAsync(store, products, allPickupLocations, productInventories, searchCriteria, globalTransferEnabled);
+                allResultItems = await SearchProductPickupLocationsAsync(products, allPickupLocations, productInventories, searchCriteria, globalTransferEnabled);
             }
             else
             {
@@ -157,7 +152,7 @@ public class ProductPickupLocationService(
         return result;
     }
 
-    protected virtual async Task<List<ProductPickupLocation>> SearchProductPickupLicationsAsync(
+    private async Task<IList<ProductPickupLocation>> SearchProductPickupLocationsAsync(
         CatalogProduct product,
         IList<PickupLocation> pickupLocations,
         IList<InventoryInfo> productInventories,
@@ -182,8 +177,8 @@ public class ProductPickupLocationService(
         return resultItems;
     }
 
-    protected virtual async Task<List<ProductPickupLocation>> SearchProductsPickupLicationsAsync(
-        Store store, IList<CatalogProduct> products,
+    private async Task<IList<ProductPickupLocation>> SearchProductPickupLocationsAsync(
+        IList<CatalogProduct> products,
         PickupLocationIndexedSearchResult pickupLocations,
         IList<InventoryInfo> productInventories,
         MultipleProductsPickupLocationSearchCriteria searchCriteria,
@@ -193,7 +188,7 @@ public class ProductPickupLocationService(
 
         foreach (var pickupLocation in pickupLocations.Results)
         {
-            var worstProductAvailability = GetWorstProductAvailability(store, products, pickupLocation, productInventories, searchCriteria, globalTransferEnabled);
+            var worstProductAvailability = GetWorstProductAvailability(products, pickupLocation, productInventories, searchCriteria, globalTransferEnabled);
 
             if (worstProductAvailability != null)
             {
@@ -205,17 +200,15 @@ public class ProductPickupLocationService(
         return resultItems;
     }
 
-    protected virtual string GetWorstProductAvailability(
-        Store store,
+    private string GetWorstProductAvailability(
         IList<CatalogProduct> products,
         PickupLocation pickupLocation,
         IList<InventoryInfo> productInventories,
         MultipleProductsPickupLocationSearchCriteria searchCriteria,
         bool globalTransferEnabled)
     {
+        string worstProductAvailability = null;
         var worstAvailabilityPossible = globalTransferEnabled ? ProductPickupAvailability.GlobalTransfer : null;
-
-        var worstProductAvailability = default(string);
 
         foreach (var product in products)
         {
@@ -224,7 +217,7 @@ public class ProductPickupLocationService(
                 .Where(x => x.FulfillmentCenterId == pickupLocation.FulfillmentCenterId || pickupLocation.TransferFulfillmentCenterIds.Contains(x.FulfillmentCenterId))
                 .ToList();
 
-            var productAvailability = GetProductPickupLocationAvailability(store, product, pickupLocation, pickupLocationProductInventories, searchCriteria.Products[product.Id].Quantity, searchCriteria.LanguageCode, globalTransferEnabled);
+            var productAvailability = GetProductPickupLocationAvailability(product, pickupLocation, pickupLocationProductInventories, searchCriteria.Products[product.Id].Quantity, globalTransferEnabled);
 
             if (worstProductAvailability == null)
             {
@@ -244,7 +237,7 @@ public class ProductPickupLocationService(
         return worstProductAvailability;
     }
 
-    protected virtual async Task<ProductPickupLocation> GetProductPickupLocationAsync(
+    private async Task<ProductPickupLocation> GetProductPickupLocationAsync(
         CatalogProduct product,
         PickupLocation pickupLocation,
         IList<InventoryInfo> pickupLocationProductInventories,
@@ -263,7 +256,7 @@ public class ProductPickupLocationService(
             return await CreatePickupLocationFromProductInventoryAsync(pickupLocation, mainPickupLocationProductQuantity, ProductPickupAvailability.Today, cultureName);
         }
 
-        var transferPickupLocationsProductQuantity = GetTransferPickupLocationsProductQuantity(pickupLocation, pickupLocationProductInventories);
+        var transferPickupLocationsProductQuantity = GetTransferPickupLocationsProductQuantity(pickupLocationProductInventories);
         if (transferPickupLocationsProductQuantity >= minQuantity)
         {
             return await CreatePickupLocationFromProductInventoryAsync(pickupLocation, transferPickupLocationsProductQuantity, ProductPickupAvailability.Transfer, cultureName);
@@ -277,13 +270,10 @@ public class ProductPickupLocationService(
         return null;
     }
 
-    protected virtual string GetProductPickupLocationAvailability(
-        Store store,
-        CatalogProduct product,
+    private static string GetProductPickupLocationAvailability(CatalogProduct product,
         PickupLocation pickupLocation,
         IList<InventoryInfo> pickupLocationProductInventories,
         long minQuantity,
-        string cultureName,
         bool globalTransferEnabled)
     {
         if (!product.TrackInventory.GetValueOrDefault())
@@ -297,7 +287,7 @@ public class ProductPickupLocationService(
             return ProductPickupAvailability.Today;
         }
 
-        var transferPickupLocationsProductQuantity = GetTransferPickupLocationsProductQuantity(pickupLocation, pickupLocationProductInventories);
+        var transferPickupLocationsProductQuantity = GetTransferPickupLocationsProductQuantity(pickupLocationProductInventories);
         if (transferPickupLocationsProductQuantity >= minQuantity)
         {
             return ProductPickupAvailability.Transfer;
@@ -311,7 +301,7 @@ public class ProductPickupLocationService(
         return null;
     }
 
-    protected virtual async Task<bool> IsPickupInStoreEnabledAsync(string storeId)
+    private async Task<bool> IsPickupInStoreEnabledAsync(string storeId)
     {
         if (shippingMethodsSearchService.Value == null)
         {
@@ -327,7 +317,7 @@ public class ProductPickupLocationService(
         return (await shippingMethodsSearchService.Value.SearchNoCloneAsync(shippingMethodsSearchCriteria)).TotalCount > 0;
     }
 
-    protected virtual async Task<IList<PickupLocation>> SearchProductPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria)
+    private async Task<IList<PickupLocation>> SearchProductPickupLocationsAsync(SingleProductPickupLocationSearchCriteria searchCriteria)
     {
         if (pickupLocationSearchService.Value == null)
         {
@@ -346,7 +336,7 @@ public class ProductPickupLocationService(
         return await pickupLocationSearchService.Value.SearchAllNoCloneAsync(pickupLocationSearchCriteria);
     }
 
-    protected virtual async Task<PickupLocationIndexedSearchResult> SearchProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
+    private async Task<PickupLocationIndexedSearchResult> SearchProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
     {
         if (pickupLocationIndexedSearchService.Value == null)
         {
@@ -367,7 +357,7 @@ public class ProductPickupLocationService(
         return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
     }
 
-    protected virtual async Task<PickupLocationIndexedSearchResult> SearchAllProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
+    private async Task<PickupLocationIndexedSearchResult> SearchAllProductPickupLocationsIndexedAsync(MultipleProductsPickupLocationSearchCriteria searchCriteria)
     {
         if (pickupLocationIndexedSearchService.Value == null)
         {
@@ -384,7 +374,7 @@ public class ProductPickupLocationService(
         return await pickupLocationIndexedSearchService.Value.SearchAsync(pickupLocationSearchCriteria);
     }
 
-    protected virtual async Task<IList<InventoryInfo>> SearchProductInventoriesAsync(IList<string> productIds)
+    private async Task<IList<InventoryInfo>> SearchProductInventoriesAsync(IList<string> productIds)
     {
         if (productInventorySearchService.Value == null)
         {
@@ -398,7 +388,7 @@ public class ProductPickupLocationService(
         return await productInventorySearchService.Value.SearchAllProductInventoriesNoCloneAsync(productInventorySearchCriteria);
     }
 
-    protected virtual long GetMainPickupLocationProductQuantity(PickupLocation pickupLocation, IList<InventoryInfo> pickupLocationProductInventories)
+    private static long GetMainPickupLocationProductQuantity(PickupLocation pickupLocation, IList<InventoryInfo> pickupLocationProductInventories)
     {
         return pickupLocationProductInventories
             .Where(x => x.FulfillmentCenterId == pickupLocation.FulfillmentCenterId)
@@ -406,7 +396,7 @@ public class ProductPickupLocationService(
             .FirstOrDefault();
     }
 
-    protected virtual long GetTransferPickupLocationsProductQuantity(PickupLocation pickupLocation, IList<InventoryInfo> pickupLocationProductInventories)
+    private static long GetTransferPickupLocationsProductQuantity(IList<InventoryInfo> pickupLocationProductInventories)
     {
         return pickupLocationProductInventories
             .Select(x => x.InStockQuantity)
@@ -414,7 +404,7 @@ public class ProductPickupLocationService(
             .Sum();
     }
 
-    protected virtual async Task<ProductPickupLocation> CreatePickupLocationFromProductInventoryAsync(PickupLocation pickupLocation, long? availableQuantity, string productPickupAvailability, string cultureName)
+    private async Task<ProductPickupLocation> CreatePickupLocationFromProductInventoryAsync(PickupLocation pickupLocation, long? availableQuantity, string productPickupAvailability, string cultureName)
     {
         var result = AbstractTypeFactory<ProductPickupLocation>.TryCreateInstance();
 
@@ -426,7 +416,7 @@ public class ProductPickupLocationService(
         return result;
     }
 
-    protected virtual async Task<string> GetProductPickupLocationNoteAsync(string productPickupAvailability, string cultureName)
+    private async Task<string> GetProductPickupLocationNoteAsync(string productPickupAvailability, string cultureName)
     {
         if (productPickupAvailability == ProductPickupAvailability.Today)
         {
@@ -437,7 +427,8 @@ public class ProductPickupLocationService(
             }
             return result;
         }
-        else if (productPickupAvailability == ProductPickupAvailability.Transfer)
+
+        if (productPickupAvailability == ProductPickupAvailability.Transfer)
         {
             var result = (await localizableSettingService.GetValuesAsync(XPickupConstants.Settings.TransferAvailabilityNote.Name, cultureName)).FirstOrDefault()?.Value;
             if (string.IsNullOrEmpty(result))
@@ -446,7 +437,8 @@ public class ProductPickupLocationService(
             }
             return result;
         }
-        else if (productPickupAvailability == ProductPickupAvailability.GlobalTransfer)
+
+        if (productPickupAvailability == ProductPickupAvailability.GlobalTransfer)
         {
             var result = (await localizableSettingService.GetValuesAsync(XPickupConstants.Settings.GlobalTransferAvailabilityNote.Name, cultureName)).FirstOrDefault()?.Value;
             if (string.IsNullOrEmpty(result))
@@ -459,12 +451,12 @@ public class ProductPickupLocationService(
         return null;
     }
 
-    protected bool GlobalTransferEnabled(Store store)
+    protected static bool GlobalTransferEnabled(Store store)
     {
         return store.Settings.GetValue<bool>(XPickupConstants.Settings.GlobalTransferEnabled);
     }
 
-    protected virtual void ApplySort(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
+    private void ApplySort(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
     {
         if (searchCriteria.Sort.IsNullOrEmpty())
         {
@@ -476,7 +468,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    protected virtual void ApplyPaging(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
+    private void ApplyPaging(ProductPickupLocationSearchResult searchResult, SearchCriteriaBase searchCriteria)
     {
         searchResult.Results = searchResult.Results
              .Skip(searchCriteria.Skip)
@@ -484,18 +476,18 @@ public class ProductPickupLocationService(
              .ToList();
     }
 
-    protected virtual int GetAvailabilityScore(string availabilityType)
+    private int GetAvailabilityScore(string availabilityType)
     {
         return availabilityType switch
         {
             ProductPickupAvailability.Today => 30,
             ProductPickupAvailability.Transfer => 20,
             ProductPickupAvailability.GlobalTransfer => 10,
-            _ => 0
+            _ => 0,
         };
     }
 
-    protected virtual string GetWorstAvailability(string productAvailability1, string productAvailability2)
+    private string GetWorstAvailability(string productAvailability1, string productAvailability2)
     {
         var score1 = GetAvailabilityScore(productAvailability1);
         var score2 = GetAvailabilityScore(productAvailability2);
@@ -503,7 +495,7 @@ public class ProductPickupLocationService(
         return score1 < score2 ? productAvailability1 : productAvailability2;
     }
 
-    protected virtual void CleanupFacets(ProductPickupLocationSearchResult searchResult, MultipleProductsPickupLocationSearchCriteria searchCriteria, IList<ProductPickupLocation> allProductPickupLocations)
+    private void CleanupFacets(ProductPickupLocationSearchResult searchResult, MultipleProductsPickupLocationSearchCriteria searchCriteria, IList<ProductPickupLocation> allProductPickupLocations)
     {
         TermFilter countryNameFilter = null;
         TermFilter regionNameFilter = null;
@@ -545,7 +537,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    protected virtual void CleanupCountryNameFacet(TermFacetResult countryNameFacet, TermFilter countryNameFilter, List<PickupLocationAddress> filteredAddresses, List<PickupLocationAddress> allAddresses)
+    private void CleanupCountryNameFacet(TermFacetResult countryNameFacet, TermFilter countryNameFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
     {
         var filterApplied = countryNameFilter != null;
 
@@ -560,7 +552,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    protected virtual void CleanupRegionNameFacet(TermFacetResult regionNameFacet, TermFilter regionNameFilter, List<PickupLocationAddress> filteredAddresses, List<PickupLocationAddress> allAddresses)
+    private void CleanupRegionNameFacet(TermFacetResult regionNameFacet, TermFilter regionNameFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
     {
         var filterApplied = regionNameFilter != null;
 
@@ -575,7 +567,7 @@ public class ProductPickupLocationService(
         }
     }
 
-    protected virtual void CleanupCityFacet(TermFacetResult cityFacet, TermFilter cityFilter, List<PickupLocationAddress> filteredAddresses, List<PickupLocationAddress> allAddresses)
+    private void CleanupCityFacet(TermFacetResult cityFacet, TermFilter cityFilter, IList<PickupLocationAddress> filteredAddresses, IList<PickupLocationAddress> allAddresses)
     {
         var filterApplied = cityFilter != null;
 
