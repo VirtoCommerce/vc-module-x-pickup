@@ -11,7 +11,7 @@ namespace VirtoCommerce.XPickup.Data.Queries;
 public class GetProductPickupLocationsQueryHandler(IProductPickupLocationService productPickupLocationService)
     : IQueryHandler<SearchProductPickupLocationsQuery, ProductPickupLocationSearchResult>
 {
-    public async Task<ProductPickupLocationSearchResult> Handle(SearchProductPickupLocationsQuery request, CancellationToken cancellationToken)
+    public Task<ProductPickupLocationSearchResult> Handle(SearchProductPickupLocationsQuery request, CancellationToken cancellationToken)
     {
         var searchCriteria = AbstractTypeFactory<SingleProductPickupLocationSearchCriteria>.TryCreateInstance();
 
@@ -24,6 +24,6 @@ public class GetProductPickupLocationsQueryHandler(IProductPickupLocationService
         searchCriteria.Skip = request.Skip;
         searchCriteria.Take = request.Take;
 
-        return await productPickupLocationService.SearchPickupLocationsAsync(searchCriteria);
+        return productPickupLocationService.SearchPickupLocationsAsync(searchCriteria);
     }
 }
