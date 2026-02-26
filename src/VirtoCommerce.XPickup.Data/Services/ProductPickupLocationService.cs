@@ -384,7 +384,7 @@ public class ProductPickupLocationService(
         productInventorySearchCriteria.ProductIds = productIds;
         productInventorySearchCriteria.WithInventoryOnly = true;
 
-        return await productInventorySearchService.Value.SearchAllProductInventoriesNoCloneAsync(productInventorySearchCriteria);
+        return await productInventorySearchService.Value.SearchAllNoCloneAsync(productInventorySearchCriteria);
     }
 
     private static long GetMainPickupLocationProductQuantity(PickupLocation pickupLocation, IList<InventoryInfo> pickupLocationProductInventories)
