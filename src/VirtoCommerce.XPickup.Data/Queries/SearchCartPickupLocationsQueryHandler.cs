@@ -35,7 +35,12 @@ public class SearchCartPickupLocationsQueryHandler(IProductPickupLocationService
 
         result.Products = cart.Items
             .Where(x => x.SelectedForCheckout)
-            .Select(x => new ProductPickupLocationSearchCriteriaItem { ProductId = x.ProductId, Quantity = x.Quantity })
+            .GroupBy(x => x.ProductId)
+            .Select(g => new ProductPickupLocationSearchCriteriaItem
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(x => x.Quantity)
+            })
             .ToDictionary(x => x.ProductId);
 
         result.Keyword = request.Keyword;
