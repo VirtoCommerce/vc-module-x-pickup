@@ -10,4 +10,10 @@ public class MultipleProductsPickupLocationSearchCriteria : SearchCriteriaBase
 
     public string Facet { get; set; }
     public string Filter { get; set; }
+
+    /// <summary>
+    /// Pickup location ids that must appear in the response regardless of paging, keyword or filter.
+    /// Missing ones are fetched and prepended after the regular search and paging are applied.
+    /// </summary>
+    public IList<string> IncludeLocationIds { get; set; }
 }

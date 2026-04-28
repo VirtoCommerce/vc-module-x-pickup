@@ -43,6 +43,12 @@ public class SearchCartPickupLocationsQueryHandler(IProductPickupLocationService
             })
             .ToDictionary(x => x.ProductId);
 
+        result.IncludeLocationIds = cart.Shipments
+            ?.Select(x => x.PickupLocationId)
+            .Where(x => !x.IsNullOrEmpty())
+            .Distinct()
+            .ToArray();
+
         result.Keyword = request.Keyword;
         result.LanguageCode = request.CultureName;
 
