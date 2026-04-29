@@ -121,7 +121,22 @@ public class ProductPickupLocationService(
         result.TotalCount = resultItems.Count;
         result.Results = resultItems;
 
-        if (pickupLocations.Aggregations != null)
+        var hasFilters = !searchCriteria.Keyword.IsNullOrEmpty() || !searchCriteria.Filter.IsNullOrEmpty();
+        var hasFacets = pickupLocations.Aggregations != null;
+        var includeLocations = searchCriteria.IncludeLocationIds?.Count > 0;
+
+        IList<ProductPickupLocation> allResultItems;
+        if (hasFilters && (hasFacets || includeLocations))
+        {
+            var allPickupLocations = await SearchAllProductPickupLocationsIndexedAsync(searchCriteria);
+            allResultItems = await SearchProductPickupLocationsAsync(products, allPickupLocations, productInventories, searchCriteria, globalTransferEnabled);
+        }
+        else
+        {
+            allResultItems = resultItems;
+        }
+
+        if (hasFacets)
         {
             result.Facets.AddRange(pickupLocations.Aggregations
                 .Select(x => mapper.Map<FacetResult>(x, options =>
@@ -130,23 +145,28 @@ public class ProductPickupLocationService(
                 }))
             );
 
-            IList<ProductPickupLocation> allResultItems;
-            if (!searchCriteria.Keyword.IsNullOrEmpty() || !searchCriteria.Filter.IsNullOrEmpty())
-            {
-                var allPickupLocations = await SearchAllProductPickupLocationsIndexedAsync(searchCriteria);
-
-                allResultItems = await SearchProductPickupLocationsAsync(products, allPickupLocations, productInventories, searchCriteria, globalTransferEnabled);
-            }
-            else
-            {
-                allResultItems = resultItems;
-            }
-
             CleanupFacets(result, searchCriteria, allResultItems);
         }
 
         ApplySort(result, searchCriteria);
         ApplyPaging(result, searchCriteria);
+
+        if (includeLocations)
+        {
+            var includeIds = searchCriteria.IncludeLocationIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var presentIds = result.Results.Select(x => x.PickupLocation.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var missingLocations = allResultItems
+                .Where(x => includeIds.Contains(x.PickupLocation.Id) &&
+                            !presentIds.Contains(x.PickupLocation.Id))
+                .OrderBy(x => x.PickupLocation.Name)
+                .ToList();
+
+            if (missingLocations.Count > 0)
+            {
+                ((List<ProductPickupLocation>)result.Results).InsertRange(0, missingLocations);
+            }
+        }
 
         return result;
     }
