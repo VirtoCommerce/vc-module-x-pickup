@@ -24,7 +24,7 @@
   </owners>
 
   <projectUrl>https://github.com/VirtoCommerce/vc-module-x-pickup</projectUrl>
-  <iconUrl>Modules/$(VirtoCommerce.XPickup)/Content/logo.png</iconUrl>
+  <iconUrl>Modules/$(VirtoCommerce.XPickup)/Content/logo.svg</iconUrl>
   <requireLicenseAcceptance>false</requireLicenseAcceptance>
 
   <assemblyFile>VirtoCommerce.XPickup.Web.dll</assemblyFile>
