@@ -1,3 +1,4 @@
+using System;
 using GraphQL.Types;
 using GraphQL.Types.Relay;
 using MediatR;
@@ -11,9 +12,15 @@ using static VirtoCommerce.Xapi.Core.ModuleConstants;
 
 namespace VirtoCommerce.XPickup.Data.Queries;
 
-public class SearchCartPickupLocationsQueryBuilder(IMediator mediator, IAuthorizationService authorizationService)
-    : SearchQueryBuilder<SearchCartPickupLocationsQuery, ProductPickupLocationSearchResult, ProductPickupLocation, ProductPickupLocationType>(mediator, authorizationService)
+public class SearchCartPickupLocationsQueryBuilder(IAuthorizationService authorizationService)
+    : SearchQueryBuilder<SearchCartPickupLocationsQuery, ProductPickupLocationSearchResult, ProductPickupLocation, ProductPickupLocationType>(authorizationService)
 {
+    [Obsolete("Use the constructor without IMediator. The mediator is resolved from context.RequestServices per request.", DiagnosticId = "VC0015", UrlFormat = "https://docs.virtocommerce.org/products/products-virto3-versions")]
+    public SearchCartPickupLocationsQueryBuilder(IMediator mediator, IAuthorizationService authorizationService)
+        : this(authorizationService)
+    {
+    }
+
     protected override string Name => "cartPickupLocations";
 
     protected override FieldType GetFieldType()
