@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using AutoMapper;
 using VirtoCommerce.CatalogModule.Core.Model;
 using VirtoCommerce.CatalogModule.Core.Services;
 using VirtoCommerce.InventoryModule.Core.Model;
@@ -29,7 +28,7 @@ using XPickupConstants = VirtoCommerce.XPickup.Core.ModuleConstants;
 namespace VirtoCommerce.XPickup.Data.Services;
 
 public class ProductPickupLocationService(
-    IMapper mapper,
+    IXPickupMapper mapper,
     IStoreService storeService,
     IItemService itemService,
     IOptionalDependency<IProductInventorySearchService> productInventorySearchService,
@@ -139,10 +138,7 @@ public class ProductPickupLocationService(
         if (hasFacets)
         {
             result.Facets.AddRange(pickupLocations.Aggregations
-                .Select(x => mapper.Map<FacetResult>(x, options =>
-                {
-                    options.Items["cultureName"] = searchCriteria.LanguageCode;
-                }))
+                .Select(x => mapper.ToFacetResult(x, searchCriteria.LanguageCode))
             );
 
             CleanupFacets(result, searchCriteria, allResultItems);
