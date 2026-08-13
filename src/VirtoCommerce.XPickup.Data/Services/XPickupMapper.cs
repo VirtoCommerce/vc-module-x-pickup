@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using VirtoCommerce.Platform.Core.Common;
@@ -24,16 +25,14 @@ public class XPickupMapper : IXPickupMapper
             _ => null,
         };
 
-        if (result != null)
+        if (result == null)
         {
-            result.Name = source.Field;
-            result.Label = source.Labels?.FirstBestMatchForLanguage(x => x.Language, cultureName)?.Label ?? result.Name;
-
-            if (order != null)
-            {
-                result.Order = order.Value;
-            }
+            return null;
         }
+
+        result.Name = source.Field;
+        result.Label = GetBestMatchLabel(source.Labels, cultureName, result.Name);
+        result.Order = order ?? result.Order;
 
         return result;
     }
@@ -54,7 +53,7 @@ public class XPickupMapper : IXPickupMapper
         result.Count = source.Count;
         result.IsSelected = source.IsApplied;
         result.Term = source.Value?.ToString();
-        result.Label = source.Labels?.FirstBestMatchForLanguage(x => x.Language, cultureName)?.Label ?? source.Value?.ToString();
+        result.Label = GetBestMatchLabel(source.Labels, cultureName, source.Value?.ToString());
 
         return result;
     }
@@ -99,6 +98,11 @@ public class XPickupMapper : IXPickupMapper
         result.Min = source.Min;
 
         return result;
+    }
+
+    private static string GetBestMatchLabel(IList<AggregationLabel> labels, string cultureName, string fallback)
+    {
+        return labels?.FirstBestMatchForLanguage(x => x.Language, cultureName)?.Label ?? fallback;
     }
 
     private static decimal? ToNullableDecimal(string value)
