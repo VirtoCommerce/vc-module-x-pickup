@@ -12,6 +12,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<ScopedSchemaFactory<DataAssemblyMarker>>();
 
+        services.AddSingleton<IXPickupMapper, XPickupMapper>();
         services.AddTransient<IProductPickupLocationService, ProductPickupLocationService>();
 
         return services;
