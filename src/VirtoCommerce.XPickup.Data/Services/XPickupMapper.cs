@@ -11,12 +11,14 @@ namespace VirtoCommerce.XPickup.Data.Services;
 
 public class XPickupMapper : IXPickupMapper
 {
-    public virtual FacetResult ToFacetResult(Aggregation source, string cultureName, int? order = null)
+    public virtual FacetResult ToFacetResult(Aggregation source, FacetMappingContext context)
     {
         if (source == null)
         {
             return null;
         }
+
+        var cultureName = context?.CultureName;
 
         FacetResult result = source.AggregationType switch
         {
@@ -32,7 +34,6 @@ public class XPickupMapper : IXPickupMapper
 
         result.Name = source.Field;
         result.Label = GetBestMatchLabel(source.Labels, cultureName, result.Name);
-        result.Order = order ?? result.Order;
 
         return result;
     }

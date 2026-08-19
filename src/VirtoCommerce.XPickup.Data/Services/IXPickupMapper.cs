@@ -5,5 +5,5 @@ namespace VirtoCommerce.XPickup.Data.Services;
 
 public interface IXPickupMapper
 {
-    FacetResult ToFacetResult(Aggregation source, string cultureName, int? order = null);
+    FacetResult ToFacetResult(Aggregation source, FacetMappingContext context);
 }

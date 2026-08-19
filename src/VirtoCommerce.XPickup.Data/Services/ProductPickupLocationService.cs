@@ -138,7 +138,12 @@ public class ProductPickupLocationService(
         if (hasFacets)
         {
             result.Facets.AddRange(pickupLocations.Aggregations
-                .Select(x => mapper.ToFacetResult(x, searchCriteria.LanguageCode))
+                .Select(x =>
+                {
+                    var context = AbstractTypeFactory<FacetMappingContext>.TryCreateInstance();
+                    context.CultureName = searchCriteria.LanguageCode;
+                    return mapper.ToFacetResult(x, context);
+                })
             );
 
             CleanupFacets(result, searchCriteria, allResultItems);

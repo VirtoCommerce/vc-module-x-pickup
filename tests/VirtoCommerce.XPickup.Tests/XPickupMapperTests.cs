@@ -12,12 +12,15 @@ namespace VirtoCommerce.XPickup.Tests;
 
 public class XPickupMapperTests
 {
+    private static readonly IMapper _legacyMapper = new MapperConfiguration(cfg =>
+        cfg.AddProfile<LegacyFacetMappingProfile>()).CreateMapper();
+
     [Fact]
     public void ToFacetResult_NullSource_ReturnsNull()
     {
         var mapper = new XPickupMapper();
 
-        var result = mapper.ToFacetResult(null, "en-US");
+        var result = mapper.ToFacetResult(null, new FacetMappingContext { CultureName = "en-US" });
 
         result.Should().BeNull();
     }
@@ -43,12 +46,11 @@ public class XPickupMapperTests
             ],
         };
 
-        var result = mapper.ToFacetResult(source, "en-US", order: 2) as TermFacetResult;
+        var result = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" }) as TermFacetResult;
 
         result.Should().NotBeNull();
         result!.Name.Should().Be("color");
         result.Label.Should().Be("Color");
-        result.Order.Should().Be(2);
         result.Terms.Should().HaveCount(1);
         result.Terms[0].Term.Should().Be("red");
         result.Terms[0].Label.Should().Be("Red");
@@ -80,7 +82,7 @@ public class XPickupMapperTests
             ],
         };
 
-        var result = mapper.ToFacetResult(source, "en-US") as RangeFacetResult;
+        var result = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" }) as RangeFacetResult;
 
         result.Should().NotBeNull();
         result!.Name.Should().Be("price");
@@ -96,12 +98,77 @@ public class XPickupMapperTests
     }
 
     [Fact]
+    public void ToFacetResult_AttrAggregation_ProducesSameResultAsLegacyAutoMapperProfile()
+    {
+        var mapper = new XPickupMapper();
+        var source = new Aggregation
+        {
+            AggregationType = "attr",
+            Field = "color",
+            Labels = [new AggregationLabel { Language = "en-US", Label = "Color" }],
+            Items =
+            [
+                new AggregationItem
+                {
+                    Value = "red",
+                    Count = 5,
+                    IsApplied = true,
+                    Labels = [new AggregationLabel { Language = "en-US", Label = "Red" }],
+                },
+                new AggregationItem
+                {
+                    Value = "blue",
+                    Count = 2,
+                    IsApplied = false,
+                },
+            ],
+        };
+
+        var expected = _legacyMapper.Map<FacetResult>(source, options => options.Items["cultureName"] = "en-US");
+
+        var actual = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
+
+        actual.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public void ToFacetResult_RangeAggregation_ProducesSameResultAsLegacyAutoMapperProfile()
+    {
+        var mapper = new XPickupMapper();
+        var source = new Aggregation
+        {
+            AggregationType = "range",
+            Field = "price",
+            Statistics = new AggregationStatistics { Min = 1.5, Max = 99.5 },
+            Items =
+            [
+                new AggregationItem
+                {
+                    Value = "1-10",
+                    Count = 3,
+                    IsApplied = false,
+                    RequestedLowerBound = "1",
+                    RequestedUpperBound = "10",
+                    IncludeLower = true,
+                    IncludeUpper = false,
+                },
+            ],
+        };
+
+        var expected = _legacyMapper.Map<FacetResult>(source, options => options.Items["cultureName"] = "en-US");
+
+        var actual = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
+
+        actual.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
     public void ToFacetResult_UnrecognizedAggregationType_ReturnsNull()
     {
         var mapper = new XPickupMapper();
         var source = new Aggregation { AggregationType = "category", Field = "categoryId" };
 
-        var result = mapper.ToFacetResult(source, "en-US");
+        var result = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
 
         result.Should().BeNull();
     }
