@@ -18,11 +18,9 @@ public class XPickupMapper : IXPickupMapper
             return null;
         }
 
-        var cultureName = context?.CultureName;
-
         FacetResult result = source.AggregationType switch
         {
-            "attr" => ToTermFacetResult(source, cultureName),
+            "attr" => ToTermFacetResult(source, context),
             "range" or "pricerange" => ToRangeFacetResult(source),
             _ => null,
         };
@@ -33,28 +31,28 @@ public class XPickupMapper : IXPickupMapper
         }
 
         result.Name = source.Field;
-        result.Label = GetBestMatchLabel(source.Labels, cultureName, result.Name);
+        result.Label = GetBestMatchLabel(source.Labels, context?.CultureName, result.Name);
 
         return result;
     }
 
-    protected virtual TermFacetResult ToTermFacetResult(Aggregation source, string cultureName)
+    protected virtual TermFacetResult ToTermFacetResult(Aggregation source, FacetMappingContext context)
     {
         var result = AbstractTypeFactory<TermFacetResult>.TryCreateInstance();
 
-        result.Terms = source.Items?.Select(x => ToFacetTerm(x, cultureName)).ToArray() ?? [];
+        result.Terms = source.Items?.Select(x => ToFacetTerm(x, context)).ToArray() ?? [];
 
         return result;
     }
 
-    protected virtual FacetTerm ToFacetTerm(AggregationItem source, string cultureName)
+    protected virtual FacetTerm ToFacetTerm(AggregationItem source, FacetMappingContext context)
     {
         var result = AbstractTypeFactory<FacetTerm>.TryCreateInstance();
 
         result.Count = source.Count;
         result.IsSelected = source.IsApplied;
         result.Term = source.Value?.ToString();
-        result.Label = GetBestMatchLabel(source.Labels, cultureName, source.Value?.ToString());
+        result.Label = GetBestMatchLabel(source.Labels, context?.CultureName, source.Value?.ToString());
 
         return result;
     }

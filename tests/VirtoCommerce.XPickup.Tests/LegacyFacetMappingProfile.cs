@@ -1,5 +1,4 @@
 using System;
-using System.Globalization;
 using System.Linq;
 using AutoMapper;
 using VirtoCommerce.SearchModule.Core.Model;
@@ -25,7 +24,7 @@ public class LegacyFacetMappingProfile : Profile
                         Count = x.Count,
                         IsSelected = x.IsApplied,
                         Term = x.Value?.ToString(),
-                        Label = x.Labels?.FirstBestMatchForLanguage(x => x.Language, cultureName)?.Label ?? x.Value.ToString(),
+                        Label = x.Labels?.FirstBestMatchForLanguage(x => x.Language, cultureName)?.Label ?? x.Value?.ToString(),
                     })
                         .ToArray() ?? [],
                     Name = request.Field
@@ -35,10 +34,10 @@ public class LegacyFacetMappingProfile : Profile
                     Ranges = request.Items?.Select(x => new FacetRange
                     {
                         Count = x.Count,
-                        From = ToNullableDecimal(x.RequestedLowerBound),
+                        From = Convert.ToInt64(x.RequestedLowerBound),
                         IncludeFrom = x.IncludeLower,
                         FromStr = x.RequestedLowerBound,
-                        To = ToNullableDecimal(x.RequestedUpperBound),
+                        To = Convert.ToInt64(x.RequestedUpperBound),
                         IncludeTo = x.IncludeUpper,
                         ToStr = x.RequestedUpperBound,
                         IsSelected = x.IsApplied,
@@ -62,15 +61,5 @@ public class LegacyFacetMappingProfile : Profile
 
             return result;
         });
-    }
-
-    private static decimal? ToNullableDecimal(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-
-        return Convert.ToDecimal(value, CultureInfo.InvariantCulture);
     }
 }

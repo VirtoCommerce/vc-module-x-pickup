@@ -137,13 +137,9 @@ public class ProductPickupLocationService(
 
         if (hasFacets)
         {
+            var facetMappingContext = CreateFacetMappingContext(searchCriteria.LanguageCode);
             result.Facets.AddRange(pickupLocations.Aggregations
-                .Select(x =>
-                {
-                    var context = AbstractTypeFactory<FacetMappingContext>.TryCreateInstance();
-                    context.CultureName = searchCriteria.LanguageCode;
-                    return mapper.ToFacetResult(x, context);
-                })
+                .Select(x => mapper.ToFacetResult(x, facetMappingContext))
             );
 
             CleanupFacets(result, searchCriteria, allResultItems);
@@ -319,6 +315,14 @@ public class ProductPickupLocationService(
         }
 
         return null;
+    }
+
+    protected virtual FacetMappingContext CreateFacetMappingContext(string cultureName)
+    {
+        var context = AbstractTypeFactory<FacetMappingContext>.TryCreateInstance();
+        context.CultureName = cultureName;
+
+        return context;
     }
 
     private async Task<bool> IsPickupInStoreEnabledAsync(string storeId)

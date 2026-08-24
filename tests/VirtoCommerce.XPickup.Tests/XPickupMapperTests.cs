@@ -128,7 +128,7 @@ public class XPickupMapperTests
 
         var actual = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
 
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().BeEquivalentTo(expected, options => options.RespectingRuntimeTypes());
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class XPickupMapperTests
 
         var actual = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
 
-        actual.Should().BeEquivalentTo(expected);
+        actual.Should().BeEquivalentTo(expected, options => options.RespectingRuntimeTypes());
     }
 
     [Fact]
