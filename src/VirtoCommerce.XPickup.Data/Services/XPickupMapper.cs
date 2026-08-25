@@ -1,116 +1,81 @@
-using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
-using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.SearchModule.Core.Model;
-using VirtoCommerce.Xapi.Core.Extensions;
 using VirtoCommerce.Xapi.Core.Models.Facets;
+using VirtoCommerce.Xapi.Core.Services;
 
 namespace VirtoCommerce.XPickup.Data.Services;
 
 public class XPickupMapper : IXPickupMapper
 {
+    private readonly IFacetMapper _facetMapper;
+
+    public XPickupMapper(IFacetMapper facetMapper)
+    {
+        _facetMapper = facetMapper;
+    }
+
     public virtual FacetResult ToFacetResult(Aggregation source, FacetMappingContext context)
     {
+        return _facetMapper.ToFacetResult(ToAggregationFacetSource(source), context);
+    }
+
+    public virtual FacetMappingContext CreateFacetMappingContext(string cultureName)
+    {
+        return _facetMapper.CreateFacetMappingContext(cultureName);
+    }
+
+    protected virtual AggregationFacetSource ToAggregationFacetSource(Aggregation source)
+    {
         if (source == null)
         {
             return null;
         }
 
-        FacetResult result = source.AggregationType switch
+        return new AggregationFacetSource
         {
-            "attr" => ToTermFacetResult(source, context),
-            "range" or "pricerange" => ToRangeFacetResult(source),
-            _ => null,
+            AggregationType = source.AggregationType,
+            Field = source.Field,
+            Labels = source.Labels?.Select(ToAggregationFacetLabel).ToList(),
+            Items = source.Items?.Select(ToAggregationFacetItem).ToList(),
+            Statistics = ToAggregationFacetStatistics(source.Statistics),
         };
+    }
 
-        if (result == null)
+    protected virtual AggregationFacetItem ToAggregationFacetItem(AggregationItem source)
+    {
+        return new AggregationFacetItem
         {
-            return null;
-        }
-
-        result.Name = source.Field;
-        result.Label = GetBestMatchLabel(source.Labels, context?.CultureName, result.Name);
-
-        return result;
+            Value = source.Value,
+            Count = source.Count,
+            IsApplied = source.IsApplied,
+            Labels = source.Labels?.Select(ToAggregationFacetLabel).ToList(),
+            RequestedLowerBound = source.RequestedLowerBound,
+            RequestedUpperBound = source.RequestedUpperBound,
+            IncludeLower = source.IncludeLower,
+            IncludeUpper = source.IncludeUpper,
+        };
     }
 
-    protected virtual TermFacetResult ToTermFacetResult(Aggregation source, FacetMappingContext context)
-    {
-        var result = AbstractTypeFactory<TermFacetResult>.TryCreateInstance();
-
-        result.Terms = source.Items?.Select(x => ToFacetTerm(x, context)).ToArray() ?? [];
-
-        return result;
-    }
-
-    protected virtual FacetTerm ToFacetTerm(AggregationItem source, FacetMappingContext context)
-    {
-        var result = AbstractTypeFactory<FacetTerm>.TryCreateInstance();
-
-        result.Count = source.Count;
-        result.IsSelected = source.IsApplied;
-        result.Term = source.Value?.ToString();
-        result.Label = GetBestMatchLabel(source.Labels, context?.CultureName, source.Value?.ToString());
-
-        return result;
-    }
-
-    protected virtual RangeFacetResult ToRangeFacetResult(Aggregation source)
-    {
-        var result = AbstractTypeFactory<RangeFacetResult>.TryCreateInstance();
-
-        result.Ranges = source.Items?.Select(ToFacetRange).ToArray() ?? [];
-        result.Statistics = ToRangeFacetStatistics(source.Statistics);
-
-        return result;
-    }
-
-    protected virtual FacetRange ToFacetRange(AggregationItem source)
-    {
-        var result = AbstractTypeFactory<FacetRange>.TryCreateInstance();
-
-        result.Count = source.Count;
-        result.IsSelected = source.IsApplied;
-        result.From = ToNullableDecimal(source.RequestedLowerBound);
-        result.IncludeFrom = source.IncludeLower;
-        result.FromStr = source.RequestedLowerBound;
-        result.To = ToNullableDecimal(source.RequestedUpperBound);
-        result.IncludeTo = source.IncludeUpper;
-        result.ToStr = source.RequestedUpperBound;
-        result.Label = source.Value?.ToString();
-
-        return result;
-    }
-
-    protected virtual RangeFacetStatistics ToRangeFacetStatistics(AggregationStatistics source)
+    protected virtual AggregationFacetStatistics ToAggregationFacetStatistics(AggregationStatistics source)
     {
         if (source == null)
         {
             return null;
         }
 
-        var result = AbstractTypeFactory<RangeFacetStatistics>.TryCreateInstance();
-
-        result.Max = source.Max;
-        result.Min = source.Min;
-
-        return result;
-    }
-
-    private static string GetBestMatchLabel(IList<AggregationLabel> labels, string cultureName, string fallback)
-    {
-        return labels?.FirstBestMatchForLanguage(x => x.Language, cultureName)?.Label ?? fallback;
-    }
-
-    private static decimal? ToNullableDecimal(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
+        return new AggregationFacetStatistics
         {
-            return null;
-        }
+            Min = source.Min,
+            Max = source.Max,
+        };
+    }
 
-        return Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+    protected virtual AggregationFacetLabel ToAggregationFacetLabel(AggregationLabel source)
+    {
+        return new AggregationFacetLabel
+        {
+            Language = source.Language,
+            Label = source.Label,
+        };
     }
 }

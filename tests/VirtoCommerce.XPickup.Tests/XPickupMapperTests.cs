@@ -1,9 +1,11 @@
+using System;
 using System.Linq;
 using AutoMapper;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using VirtoCommerce.SearchModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Models.Facets;
+using VirtoCommerce.Xapi.Core.Services;
 using VirtoCommerce.XPickup.Data.Extensions;
 using VirtoCommerce.XPickup.Data.Services;
 using Xunit;
@@ -12,28 +14,29 @@ namespace VirtoCommerce.XPickup.Tests;
 
 public class XPickupMapperTests
 {
-    private static readonly IMapper _legacyMapper = new MapperConfiguration(cfg =>
-        cfg.AddProfile<LegacyFacetMappingProfile>()).CreateMapper();
-
     [Fact]
-    public void ToFacetResult_NullSource_ReturnsNull()
+    public void ToFacetResult_NullSource_PassesNullToFacetMapper()
     {
-        var mapper = new XPickupMapper();
+        AggregationFacetSource captured = null;
+        var mapper = new XPickupMapper(new CapturingFacetMapper(x => captured = x));
 
-        var result = mapper.ToFacetResult(null, new FacetMappingContext { CultureName = "en-US" });
+        mapper.ToFacetResult(null, new FacetMappingContext { CultureName = "en-US" });
 
-        result.Should().BeNull();
+        captured.Should().BeNull();
     }
 
     [Fact]
-    public void ToFacetResult_AttrAggregation_MapsToTermFacetResult()
+    public void ToFacetResult_ConvertsAggregationToAggregationFacetSource()
     {
-        var mapper = new XPickupMapper();
+        AggregationFacetSource captured = null;
+        var mapper = new XPickupMapper(new CapturingFacetMapper(x => captured = x));
+
         var source = new Aggregation
         {
             AggregationType = "attr",
             Field = "color",
             Labels = [new AggregationLabel { Language = "en-US", Label = "Color" }],
+            Statistics = new AggregationStatistics { Min = 1.5, Max = 99.5 },
             Items =
             [
                 new AggregationItem
@@ -42,38 +45,6 @@ public class XPickupMapperTests
                     Count = 5,
                     IsApplied = true,
                     Labels = [new AggregationLabel { Language = "en-US", Label = "Red" }],
-                },
-            ],
-        };
-
-        var result = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" }) as TermFacetResult;
-
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("color");
-        result.Label.Should().Be("Color");
-        result.Terms.Should().HaveCount(1);
-        result.Terms[0].Term.Should().Be("red");
-        result.Terms[0].Label.Should().Be("Red");
-        result.Terms[0].Count.Should().Be(5);
-        result.Terms[0].IsSelected.Should().BeTrue();
-    }
-
-    [Fact]
-    public void ToFacetResult_RangeAggregation_MapsToRangeFacetResult()
-    {
-        var mapper = new XPickupMapper();
-        var source = new Aggregation
-        {
-            AggregationType = "range",
-            Field = "price",
-            Statistics = new AggregationStatistics { Min = 1.5, Max = 99.5 },
-            Items =
-            [
-                new AggregationItem
-                {
-                    Value = "1-10",
-                    Count = 3,
-                    IsApplied = false,
                     RequestedLowerBound = "1",
                     RequestedUpperBound = "10",
                     IncludeLower = true,
@@ -82,95 +53,47 @@ public class XPickupMapperTests
             ],
         };
 
-        var result = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" }) as RangeFacetResult;
+        mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
 
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("price");
-        result.Order.Should().Be(0);
-        result.Statistics.Min.Should().Be(1.5);
-        result.Statistics.Max.Should().Be(99.5);
-        result.Ranges.Should().HaveCount(1);
-        result.Ranges[0].From.Should().Be(1);
-        result.Ranges[0].To.Should().Be(10);
-        result.Ranges[0].IncludeFrom.Should().BeTrue();
-        result.Ranges[0].IncludeTo.Should().BeFalse();
-        result.Ranges[0].Count.Should().Be(3);
+        captured.Should().NotBeNull();
+        captured!.AggregationType.Should().Be("attr");
+        captured.Field.Should().Be("color");
+        captured.Labels.Should().ContainSingle().Which.Label.Should().Be("Color");
+        captured.Statistics!.Min.Should().Be(1.5);
+        captured.Statistics.Max.Should().Be(99.5);
+
+        captured.Items.Should().ContainSingle();
+        var item = captured.Items![0];
+        item.Value.Should().Be("red");
+        item.Count.Should().Be(5);
+        item.IsApplied.Should().BeTrue();
+        item.Labels.Should().ContainSingle().Which.Label.Should().Be("Red");
+        item.RequestedLowerBound.Should().Be("1");
+        item.RequestedUpperBound.Should().Be("10");
+        item.IncludeLower.Should().BeTrue();
+        item.IncludeUpper.Should().BeFalse();
     }
 
     [Fact]
-    public void ToFacetResult_AttrAggregation_ProducesSameResultAsLegacyAutoMapperProfile()
+    public void ToFacetResult_NullStatistics_ConvertsToNull()
     {
-        var mapper = new XPickupMapper();
-        var source = new Aggregation
-        {
-            AggregationType = "attr",
-            Field = "color",
-            Labels = [new AggregationLabel { Language = "en-US", Label = "Color" }],
-            Items =
-            [
-                new AggregationItem
-                {
-                    Value = "red",
-                    Count = 5,
-                    IsApplied = true,
-                    Labels = [new AggregationLabel { Language = "en-US", Label = "Red" }],
-                },
-                new AggregationItem
-                {
-                    Value = "blue",
-                    Count = 2,
-                    IsApplied = false,
-                },
-            ],
-        };
+        AggregationFacetSource captured = null;
+        var mapper = new XPickupMapper(new CapturingFacetMapper(x => captured = x));
 
-        var expected = _legacyMapper.Map<FacetResult>(source, options => options.Items["cultureName"] = "en-US");
+        mapper.ToFacetResult(new Aggregation { AggregationType = "range", Field = "price" }, new FacetMappingContext());
 
-        var actual = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
-
-        actual.Should().BeEquivalentTo(expected, options => options.RespectingRuntimeTypes());
+        captured!.Statistics.Should().BeNull();
     }
 
     [Fact]
-    public void ToFacetResult_RangeAggregation_ProducesSameResultAsLegacyAutoMapperProfile()
+    public void ToFacetResult_ReturnsFacetMapperResult()
     {
-        var mapper = new XPickupMapper();
-        var source = new Aggregation
-        {
-            AggregationType = "range",
-            Field = "price",
-            Statistics = new AggregationStatistics { Min = 1.5, Max = 99.5 },
-            Items =
-            [
-                new AggregationItem
-                {
-                    Value = "1-10",
-                    Count = 3,
-                    IsApplied = false,
-                    RequestedLowerBound = "1",
-                    RequestedUpperBound = "10",
-                    IncludeLower = true,
-                    IncludeUpper = false,
-                },
-            ],
-        };
+        var expected = new TermFacetResult();
+        var mapper = new XPickupMapper(new StubFacetMapper(expected));
 
-        var expected = _legacyMapper.Map<FacetResult>(source, options => options.Items["cultureName"] = "en-US");
+        var result = mapper.ToFacetResult(new Aggregation { AggregationType = "attr" }, new FacetMappingContext());
 
-        var actual = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
-
-        actual.Should().BeEquivalentTo(expected, options => options.RespectingRuntimeTypes());
-    }
-
-    [Fact]
-    public void ToFacetResult_UnrecognizedAggregationType_ReturnsNull()
-    {
-        var mapper = new XPickupMapper();
-        var source = new Aggregation { AggregationType = "category", Field = "categoryId" };
-
-        var result = mapper.ToFacetResult(source, new FacetMappingContext { CultureName = "en-US" });
-
-        result.Should().BeNull();
+        result.Should().BeSameAs(expected);
     }
 
     [Fact]
@@ -200,5 +123,43 @@ public class XPickupMapperTests
         });
 
         act.Should().Throw<AutoMapperMappingException>();
+    }
+
+    [Fact]
+    public void CreateFacetMappingContext_DelegatesToFacetMapper()
+    {
+        var expected = new FacetMappingContext();
+        var mapper = new XPickupMapper(new StubFacetMapper(null, expected));
+
+        var result = mapper.CreateFacetMappingContext("en-US");
+
+        result.Should().BeSameAs(expected);
+    }
+
+    private sealed class CapturingFacetMapper(Action<AggregationFacetSource> capture) : IFacetMapper
+    {
+        public FacetResult ToFacetResult(AggregationFacetSource source, FacetMappingContext context)
+        {
+            capture(source);
+            return null;
+        }
+
+        public FacetMappingContext CreateFacetMappingContext(string cultureName)
+        {
+            return null;
+        }
+    }
+
+    private sealed class StubFacetMapper(FacetResult result, FacetMappingContext context = null) : IFacetMapper
+    {
+        public FacetResult ToFacetResult(AggregationFacetSource source, FacetMappingContext facetMappingContext)
+        {
+            return result;
+        }
+
+        public FacetMappingContext CreateFacetMappingContext(string cultureName)
+        {
+            return context;
+        }
     }
 }

@@ -137,12 +137,7 @@ public class ProductPickupLocationService(
 
         if (hasFacets)
         {
-            var facetMappingContext = CreateFacetMappingContext(searchCriteria.LanguageCode);
-            result.Facets.AddRange(pickupLocations.Aggregations
-                .Select(x => mapper.ToFacetResult(x, facetMappingContext))
-            );
-
-            CleanupFacets(result, searchCriteria, allResultItems);
+            ApplyFacets(result, pickupLocations.Aggregations, searchCriteria, allResultItems);
         }
 
         ApplySort(result, searchCriteria);
@@ -166,6 +161,26 @@ public class ProductPickupLocationService(
         }
 
         return result;
+    }
+
+    protected virtual void ApplyFacets(
+        ProductPickupLocationSearchResult result,
+        IList<Aggregation> aggregations,
+        MultipleProductsPickupLocationSearchCriteria searchCriteria,
+        IList<ProductPickupLocation> allResultItems)
+    {
+        var facetMappingContext = mapper.CreateFacetMappingContext(searchCriteria.LanguageCode);
+        result.Facets.AddRange(aggregations
+            .Select((x, i) =>
+            {
+                var facetResult = mapper.ToFacetResult(x, facetMappingContext);
+                facetResult?.Order = i;
+
+                return facetResult;
+            })
+        );
+
+        CleanupFacets(result, searchCriteria, allResultItems);
     }
 
     private async Task<IList<ProductPickupLocation>> SearchProductPickupLocationsAsync(
@@ -315,14 +330,6 @@ public class ProductPickupLocationService(
         }
 
         return null;
-    }
-
-    protected virtual FacetMappingContext CreateFacetMappingContext(string cultureName)
-    {
-        var context = AbstractTypeFactory<FacetMappingContext>.TryCreateInstance();
-        context.CultureName = cultureName;
-
-        return context;
     }
 
     private async Task<bool> IsPickupInStoreEnabledAsync(string storeId)
