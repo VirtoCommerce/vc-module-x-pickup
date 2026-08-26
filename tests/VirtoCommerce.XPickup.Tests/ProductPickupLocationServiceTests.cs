@@ -3,6 +3,7 @@ using FluentAssertions;
 using VirtoCommerce.SearchModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Models.Facets;
 using VirtoCommerce.XPickup.Core.Models;
+using VirtoCommerce.XPickup.Core.Services;
 using VirtoCommerce.XPickup.Data.Services;
 using Xunit;
 
@@ -13,7 +14,7 @@ public class ProductPickupLocationServiceTests
     [Fact]
     public void ApplyFacets_MultipleAggregations_BuildsContextOnceAndAssignsOrderByPosition()
     {
-        var facetMapper = new CapturingFacetMapper("en-US");
+        var facetMapper = new CapturingFacetMapper();
         var service = new TestableProductPickupLocationService(facetMapper);
 
         var result = new ProductPickupLocationSearchResult { Facets = [] };
@@ -34,7 +35,7 @@ public class ProductPickupLocationServiceTests
         facetMapper.CapturedContexts[0].Should().BeSameAs(facetMapper.CapturedContexts[1]);
     }
 
-    private sealed class CapturingFacetMapper(string cultureName) : IXPickupMapper
+    private sealed class CapturingFacetMapper : IXPickupMapper
     {
         public List<FacetMappingContext> CapturedContexts { get; } = [];
 
@@ -42,12 +43,6 @@ public class ProductPickupLocationServiceTests
         {
             CapturedContexts.Add(context);
             return new TermFacetResult { Name = source.Field };
-        }
-
-        public FacetMappingContext CreateFacetMappingContext(string requestedCultureName)
-        {
-            requestedCultureName.Should().Be(cultureName);
-            return new FacetMappingContext { CultureName = requestedCultureName };
         }
     }
 
@@ -69,6 +64,14 @@ public class ProductPickupLocationServiceTests
             IList<ProductPickupLocation> allResultItems)
         {
             ApplyFacets(result, aggregations, searchCriteria, allResultItems);
+        }
+
+        protected override PickupFacetMappingContext CreateFacetMappingContext(MultipleProductsPickupLocationSearchCriteria criteria)
+        {
+            var context = base.CreateFacetMappingContext(criteria);
+            context.CultureName.Should().Be("en-US");
+
+            return context;
         }
     }
 }

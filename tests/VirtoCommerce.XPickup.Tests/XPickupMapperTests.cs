@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using VirtoCommerce.SearchModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Models.Facets;
 using VirtoCommerce.Xapi.Core.Services;
+using VirtoCommerce.XPickup.Core.Services;
 using VirtoCommerce.XPickup.Data.Extensions;
 using VirtoCommerce.XPickup.Data.Services;
 using Xunit;
@@ -125,17 +126,6 @@ public class XPickupMapperTests
         act.Should().Throw<AutoMapperMappingException>();
     }
 
-    [Fact]
-    public void CreateFacetMappingContext_DelegatesToFacetMapper()
-    {
-        var expected = new FacetMappingContext();
-        var mapper = new XPickupMapper(new StubFacetMapper(null, expected));
-
-        var result = mapper.CreateFacetMappingContext("en-US");
-
-        result.Should().BeSameAs(expected);
-    }
-
     private sealed class CapturingFacetMapper(Action<AggregationFacetSource> capture) : IFacetMapper
     {
         public FacetResult ToFacetResult(AggregationFacetSource source, FacetMappingContext context)
@@ -143,23 +133,13 @@ public class XPickupMapperTests
             capture(source);
             return null;
         }
-
-        public FacetMappingContext CreateFacetMappingContext(string cultureName)
-        {
-            return null;
-        }
     }
 
-    private sealed class StubFacetMapper(FacetResult result, FacetMappingContext context = null) : IFacetMapper
+    private sealed class StubFacetMapper(FacetResult result) : IFacetMapper
     {
         public FacetResult ToFacetResult(AggregationFacetSource source, FacetMappingContext facetMappingContext)
         {
             return result;
-        }
-
-        public FacetMappingContext CreateFacetMappingContext(string cultureName)
-        {
-            return context;
         }
     }
 }

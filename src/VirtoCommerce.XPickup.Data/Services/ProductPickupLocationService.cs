@@ -169,7 +169,7 @@ public class ProductPickupLocationService(
         MultipleProductsPickupLocationSearchCriteria searchCriteria,
         IList<ProductPickupLocation> allResultItems)
     {
-        var facetMappingContext = mapper.CreateFacetMappingContext(searchCriteria.LanguageCode);
+        var facetMappingContext = CreateFacetMappingContext(searchCriteria);
         result.Facets.AddRange(aggregations
             .Select((x, i) =>
             {
@@ -181,6 +181,14 @@ public class ProductPickupLocationService(
         );
 
         CleanupFacets(result, searchCriteria, allResultItems);
+    }
+
+    protected virtual PickupFacetMappingContext CreateFacetMappingContext(MultipleProductsPickupLocationSearchCriteria criteria)
+    {
+        var context = AbstractTypeFactory<PickupFacetMappingContext>.TryCreateInstance();
+        context.CultureName = criteria.LanguageCode;
+
+        return context;
     }
 
     private async Task<IList<ProductPickupLocation>> SearchProductPickupLocationsAsync(

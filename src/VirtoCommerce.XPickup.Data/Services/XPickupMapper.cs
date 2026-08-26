@@ -2,6 +2,7 @@ using System.Linq;
 using VirtoCommerce.SearchModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Models.Facets;
 using VirtoCommerce.Xapi.Core.Services;
+using VirtoCommerce.XPickup.Core.Services;
 
 namespace VirtoCommerce.XPickup.Data.Services;
 
@@ -17,11 +18,6 @@ public class XPickupMapper : IXPickupMapper
     public virtual FacetResult ToFacetResult(Aggregation source, FacetMappingContext context)
     {
         return _facetMapper.ToFacetResult(ToAggregationFacetSource(source), context);
-    }
-
-    public virtual FacetMappingContext CreateFacetMappingContext(string cultureName)
-    {
-        return _facetMapper.CreateFacetMappingContext(cultureName);
     }
 
     protected virtual AggregationFacetSource ToAggregationFacetSource(Aggregation source)
