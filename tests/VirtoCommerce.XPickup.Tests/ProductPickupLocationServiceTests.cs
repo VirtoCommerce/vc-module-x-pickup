@@ -33,6 +33,8 @@ public class ProductPickupLocationServiceTests
 
         facetMapper.CapturedContexts.Should().HaveCount(2);
         facetMapper.CapturedContexts[0].Should().BeSameAs(facetMapper.CapturedContexts[1]);
+        facetMapper.CapturedContexts[0].Should().BeOfType<PickupFacetMappingContext>()
+            .Which.CultureName.Should().Be("en-US");
     }
 
     private sealed class CapturingFacetMapper : IXPickupMapper
@@ -64,14 +66,6 @@ public class ProductPickupLocationServiceTests
             IList<ProductPickupLocation> allResultItems)
         {
             ApplyFacets(result, aggregations, searchCriteria, allResultItems);
-        }
-
-        protected override PickupFacetMappingContext CreateFacetMappingContext(MultipleProductsPickupLocationSearchCriteria criteria)
-        {
-            var context = base.CreateFacetMappingContext(criteria);
-            context.CultureName.Should().Be("en-US");
-
-            return context;
         }
     }
 }
