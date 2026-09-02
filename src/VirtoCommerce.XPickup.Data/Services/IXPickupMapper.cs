@@ -1,9 +1,0 @@
-using VirtoCommerce.SearchModule.Core.Model;
-using VirtoCommerce.Xapi.Core.Models.Facets;
-
-namespace VirtoCommerce.XPickup.Data.Services;
-
-public interface IXPickupMapper
-{
-    FacetResult ToFacetResult(Aggregation source, string cultureName, int? order = null);
-}
