@@ -1,4 +1,5 @@
 using System.Linq;
+using VirtoCommerce.Platform.Core.Common;
 using VirtoCommerce.SearchModule.Core.Model;
 using VirtoCommerce.Xapi.Core.Models.Facets;
 using VirtoCommerce.Xapi.Core.Services;
@@ -27,29 +28,31 @@ public class XPickupMapper : IXPickupMapper
             return null;
         }
 
-        return new AggregationFacetSource
-        {
-            AggregationType = source.AggregationType,
-            Field = source.Field,
-            Labels = source.Labels?.Select(ToAggregationFacetLabel).ToList(),
-            Items = source.Items?.Select(ToAggregationFacetItem).ToList(),
-            Statistics = ToAggregationFacetStatistics(source.Statistics),
-        };
+        var result = AbstractTypeFactory<AggregationFacetSource>.TryCreateInstance();
+
+        result.AggregationType = source.AggregationType;
+        result.Field = source.Field;
+        result.Labels = source.Labels?.Select(ToAggregationFacetLabel).ToList();
+        result.Items = source.Items?.Select(ToAggregationFacetItem).ToList();
+        result.Statistics = ToAggregationFacetStatistics(source.Statistics);
+
+        return result;
     }
 
     protected virtual AggregationFacetItem ToAggregationFacetItem(AggregationItem source)
     {
-        return new AggregationFacetItem
-        {
-            Value = source.Value,
-            Count = source.Count,
-            IsApplied = source.IsApplied,
-            Labels = source.Labels?.Select(ToAggregationFacetLabel).ToList(),
-            RequestedLowerBound = source.RequestedLowerBound,
-            RequestedUpperBound = source.RequestedUpperBound,
-            IncludeLower = source.IncludeLower,
-            IncludeUpper = source.IncludeUpper,
-        };
+        var result = AbstractTypeFactory<AggregationFacetItem>.TryCreateInstance();
+
+        result.Value = source.Value;
+        result.Count = source.Count;
+        result.IsApplied = source.IsApplied;
+        result.Labels = source.Labels?.Select(ToAggregationFacetLabel).ToList();
+        result.RequestedLowerBound = source.RequestedLowerBound;
+        result.RequestedUpperBound = source.RequestedUpperBound;
+        result.IncludeLower = source.IncludeLower;
+        result.IncludeUpper = source.IncludeUpper;
+
+        return result;
     }
 
     protected virtual AggregationFacetStatistics ToAggregationFacetStatistics(AggregationStatistics source)
@@ -59,19 +62,21 @@ public class XPickupMapper : IXPickupMapper
             return null;
         }
 
-        return new AggregationFacetStatistics
-        {
-            Min = source.Min,
-            Max = source.Max,
-        };
+        var result = AbstractTypeFactory<AggregationFacetStatistics>.TryCreateInstance();
+
+        result.Min = source.Min;
+        result.Max = source.Max;
+
+        return result;
     }
 
     protected virtual AggregationFacetLabel ToAggregationFacetLabel(AggregationLabel source)
     {
-        return new AggregationFacetLabel
-        {
-            Language = source.Language,
-            Label = source.Label,
-        };
+        var result = AbstractTypeFactory<AggregationFacetLabel>.TryCreateInstance();
+
+        result.Language = source.Language;
+        result.Label = source.Label;
+
+        return result;
     }
 }
