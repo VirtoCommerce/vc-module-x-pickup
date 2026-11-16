@@ -1,6 +1,5 @@
 using System;
 using System.Linq;
-using AutoMapper;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using VirtoCommerce.SearchModule.Core.Model;
@@ -110,20 +109,6 @@ public class XPickupMapperTests
         descriptor.Should().NotBeNull();
         descriptor.ImplementationType.Should().Be<XPickupMapper>();
         descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton);
-    }
-
-    [Fact]
-    public void LegacyAutoMapper_WithNoRegisteredTypeMap_ThrowsOnTheOldCallSiteShape()
-    {
-        var legacyMapper = new MapperConfiguration(_ => { }).CreateMapper();
-        var source = new Aggregation { AggregationType = "attr", Field = "color" };
-
-        var act = () => legacyMapper.Map<FacetResult>(source, options =>
-        {
-            options.Items["cultureName"] = "en-US";
-        });
-
-        act.Should().Throw<AutoMapperMappingException>();
     }
 
     private sealed class CapturingFacetMapper(Action<AggregationFacetSource> capture) : IFacetMapper
